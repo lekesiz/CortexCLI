@@ -22,6 +22,41 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional
 import fnmatch
 
+class FileManagerPlugin:
+    """Gelişmiş dosya yönetimi plugin'i"""
+    
+    def __init__(self):
+        self.name = "file_manager"
+        self.description = "Gelişmiş dosya yönetimi araçları"
+        self.version = "2.0.0"
+        
+    def execute(self, command: str, *args) -> str:
+        """Plugin komutlarını çalıştırır"""
+        if command == "list":
+            return list_files(*args)
+        elif command == "preview":
+            return preview_file(*args)
+        elif command == "search":
+            return search_files(*args)
+        elif command == "find":
+            return find_files(*args)
+        elif command == "info":
+            return file_info(*args)
+        elif command == "copy":
+            return copy_file(*args)
+        elif command == "move":
+            return move_file(*args)
+        elif command == "rename":
+            return rename_file(*args)
+        elif command == "delete":
+            return delete_file(*args)
+        elif command == "mkdir":
+            return make_directory(*args)
+        elif command == "tree":
+            return tree_view(*args)
+        else:
+            return help()
+
 def list_files(directory: str = ".", pattern: str = "*", file_type: str = "all") -> str:
     """Dosyaları listeler ve filtreler."""
     try:

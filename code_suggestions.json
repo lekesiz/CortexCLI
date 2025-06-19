@@ -1,0 +1,54 @@
+{
+  "python": {
+    "file_operations": [
+      {
+        "code": "import os\nfrom pathlib import Path\n\n# Dosya işlemleri\npath = Path('file.txt')\nif path.exists():\n    content = path.read_text(encoding='utf-8')",
+        "description": "Güvenli dosya okuma",
+        "confidence": 0.9,
+        "tags": [
+          "file",
+          "io",
+          "safe"
+        ]
+      }
+    ],
+    "data_processing": [
+      {
+        "code": "import pandas as pd\n\n# CSV dosyası okuma\ndf = pd.read_csv('data.csv')\nprint(df.head())",
+        "description": "Pandas ile veri okuma",
+        "confidence": 0.95,
+        "tags": [
+          "pandas",
+          "data",
+          "csv"
+        ]
+      }
+    ],
+    "web_requests": [
+      {
+        "code": "import requests\n\n# HTTP isteği\nresponse = requests.get('https://api.example.com/data')\ndata = response.json()",
+        "description": "HTTP isteği yapma",
+        "confidence": 0.85,
+        "tags": [
+          "requests",
+          "http",
+          "api"
+        ]
+      }
+    ]
+  },
+  "javascript": {
+    "async_operations": [
+      {
+        "code": "async function fetchData() {\n    const response = await fetch('/api/data');\n    const data = await response.json();\n    return data;\n}",
+        "description": "Async/await ile veri çekme",
+        "confidence": 0.9,
+        "tags": [
+          "async",
+          "fetch",
+          "api"
+        ]
+      }
+    ]
+  }
+}

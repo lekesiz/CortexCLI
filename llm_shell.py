@@ -198,19 +198,252 @@ def list_project_files(directory: str = ".") -> list:
     """Proje dosyalarını listeler"""
     files = []
     try:
-        for root, dirs, filenames in os.walk(directory):
-            # .git, __pycache__ gibi klasörleri atla
-            dirs[:] = [d for d in dirs if not d.startswith('.') and d != '__pycache__']
-            
-            for filename in filenames:
-                if not filename.startswith('.'):
-                    full_path = os.path.join(root, filename)
-                    rel_path = os.path.relpath(full_path, directory)
-                    files.append(rel_path)
+        for item in os.listdir(directory):
+            if not item.startswith('.'):  # Gizli dosyaları atla
+                files.append(item)
+        return sorted(files)
     except Exception as e:
         console.print(f"[red]Dosya listesi alınamadı: {e}[/red]")
+        return []
+
+def get_file_context(file_path: str = None, max_lines: int = 100) -> str:
+    """Dosya context'ini alır ve LLM için hazırlar"""
+    context = ""
     
-    return files
+    if file_path and os.path.exists(file_path):
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+                context += f"=== DOSYA: {file_path} ===\n"
+                context += f"Boyut: {len(lines)} satır\n"
+                context += "".join(lines[:max_lines])
+                if len(lines) > max_lines:
+                    context += f"\n... ve {len(lines) - max_lines} satır daha\n"
+        except Exception as e:
+            context += f"Dosya okunamadı: {e}\n"
+    
+    return context
+
+def get_project_context(directory: str = ".", max_files: int = 10) -> str:
+    """Proje context'ini alır"""
+    context = f"=== PROJE: {os.path.abspath(directory)} ===\n"
+    context += f"Mevcut dizin: {os.getcwd()}\n\n"
+    
+    # Dosya yapısını analiz et
+    try:
+        files = []
+        for root, dirs, filenames in os.walk(directory):
+            # Gizli dosyaları atla
+            dirs[:] = [d for d in dirs if not d.startswith('.')]
+            filenames = [f for f in filenames if not f.startswith('.')]
+            
+            for filename in filenames:
+                rel_path = os.path.relpath(os.path.join(root, filename), directory)
+                files.append(rel_path)
+        
+        # En önemli dosyaları seç (config, main, requirements vb.)
+        important_files = []
+        for file in files:
+            if any(keyword in file.lower() for keyword in ['main', 'app', 'config', 'requirements', 'setup', 'readme', 'package']):
+                important_files.append(file)
+        
+        # İlk max_files kadar dosyayı ekle
+        selected_files = important_files[:max_files//2] + files[:max_files//2]
+        
+        context += "DOSYA YAPISI:\n"
+        for file in selected_files:
+            context += f"- {file}\n"
+        
+        if len(files) > max_files:
+            context += f"... ve {len(files) - max_files} dosya daha\n"
+            
+    except Exception as e:
+        context += f"Dosya yapısı analiz edilemedi: {e}\n"
+    
+    return context
+
+def analyze_code_structure(file_path: str) -> str:
+    """Kod yapısını analiz eder"""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        analysis = f"=== KOD ANALİZİ: {file_path} ===\n"
+        
+        # Dosya türünü belirle
+        ext = os.path.splitext(file_path)[1].lower()
+        if ext == '.py':
+            analysis += analyze_python_structure(content)
+        elif ext in ['.js', '.ts', '.jsx', '.tsx']:
+            analysis += analyze_javascript_structure(content)
+        elif ext in ['.html', '.htm']:
+            analysis += analyze_html_structure(content)
+        elif ext in ['.css', '.scss', '.sass']:
+            analysis += analyze_css_structure(content)
+        else:
+            analysis += f"Dosya türü: {ext}\nSatır sayısı: {len(content.splitlines())}\n"
+        
+        return analysis
+        
+    except Exception as e:
+        return f"Kod analizi hatası: {e}"
+
+def analyze_python_structure(content: str) -> str:
+    """Python kod yapısını analiz eder"""
+    import ast
+    
+    analysis = "Dil: Python\n"
+    lines = content.splitlines()
+    analysis += f"Satır sayısı: {len(lines)}\n"
+    
+    try:
+        tree = ast.parse(content)
+        
+        # Import'ları bul
+        imports = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    imports.append(alias.name)
+            elif isinstance(node, ast.ImportFrom):
+                module = node.module or ""
+                for alias in node.names:
+                    imports.append(f"{module}.{alias.name}")
+        
+        if imports:
+            analysis += f"Import'lar: {', '.join(imports[:10])}\n"
+        
+        # Fonksiyonları bul
+        functions = []
+        classes = []
+        
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef):
+                functions.append(node.name)
+            elif isinstance(node, ast.ClassDef):
+                classes.append(node.name)
+        
+        if functions:
+            analysis += f"Fonksiyonlar: {', '.join(functions[:10])}\n"
+        if classes:
+            analysis += f"Sınıflar: {', '.join(classes[:10])}\n"
+            
+    except SyntaxError:
+        analysis += "Syntax hatası var\n"
+    except Exception as e:
+        analysis += f"AST analizi hatası: {e}\n"
+    
+    return analysis
+
+def analyze_javascript_structure(content: str) -> str:
+    """JavaScript kod yapısını analiz eder"""
+    analysis = "Dil: JavaScript\n"
+    lines = content.splitlines()
+    analysis += f"Satır sayısı: {len(lines)}\n"
+    
+    # Basit regex analizi
+    import re
+    
+    # Import/require'ları bul
+    imports = re.findall(r'(?:import|require)\s*\(?[\'"]([^\'"]+)[\'"]', content)
+    if imports:
+        analysis += f"Import'lar: {', '.join(imports[:10])}\n"
+    
+    # Fonksiyonları bul
+    functions = re.findall(r'(?:function|const|let|var)\s+(\w+)\s*[=\(]', content)
+    if functions:
+        analysis += f"Fonksiyonlar: {', '.join(functions[:10])}\n"
+    
+    # Class'ları bul
+    classes = re.findall(r'class\s+(\w+)', content)
+    if classes:
+        analysis += f"Sınıflar: {', '.join(classes[:10])}\n"
+    
+    return analysis
+
+def analyze_html_structure(content: str) -> str:
+    """HTML yapısını analiz eder"""
+    analysis = "Dil: HTML\n"
+    lines = content.splitlines()
+    analysis += f"Satır sayısı: {len(lines)}\n"
+    
+    import re
+    
+    # Tag'leri bul
+    tags = re.findall(r'<(\w+)', content)
+    tag_counts = {}
+    for tag in tags:
+        tag_counts[tag] = tag_counts.get(tag, 0) + 1
+    
+    if tag_counts:
+        analysis += "Kullanılan tag'ler:\n"
+        for tag, count in sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)[:10]:
+            analysis += f"  - {tag}: {count} kez\n"
+    
+    return analysis
+
+def analyze_css_structure(content: str) -> str:
+    """CSS yapısını analiz eder"""
+    analysis = "Dil: CSS\n"
+    lines = content.splitlines()
+    analysis += f"Satır sayısı: {len(lines)}\n"
+    
+    import re
+    
+    # Selector'ları bul
+    selectors = re.findall(r'([.#]?\w+(?:[^\n{]*?))\s*{', content)
+    if selectors:
+        analysis += f"Selector'lar: {', '.join(selectors[:10])}\n"
+    
+    return analysis
+
+def create_context_aware_prompt(user_prompt: str, current_file: str = None, include_project: bool = True) -> str:
+    """Context-aware prompt oluşturur"""
+    context_prompt = ""
+    
+    # Proje context'i ekle
+    if include_project:
+        context_prompt += get_project_context() + "\n\n"
+    
+    # Mevcut dosya context'i ekle
+    if current_file and os.path.exists(current_file):
+        context_prompt += get_file_context(current_file) + "\n\n"
+        context_prompt += analyze_code_structure(current_file) + "\n\n"
+    
+    # Kullanıcı prompt'unu ekle
+    context_prompt += f"KULLANICI SORUSU: {user_prompt}\n\n"
+    context_prompt += "Lütfen yukarıdaki dosya yapısını ve kodları dikkate alarak yanıt ver. "
+    context_prompt += "Eğer kod değişikliği öneriyorsan, hangi dosyada değişiklik yapılacağını belirt. "
+    context_prompt += "Dosya yollarını tam olarak kullan."
+    
+    return context_prompt
+
+def smart_file_navigation(query: str) -> str:
+    """Akıllı dosya navigasyonu"""
+    try:
+        # Query'de dosya adı geçiyorsa bul
+        import re
+        file_patterns = re.findall(r'\b\w+\.(?:py|js|ts|jsx|tsx|html|css|json|yaml|yml|md|txt)\b', query)
+        
+        if file_patterns:
+            for pattern in file_patterns:
+                # Dosyayı bul
+                for root, dirs, files in os.walk('.'):
+                    if pattern in files:
+                        file_path = os.path.join(root, pattern)
+                        return f"Bulunan dosya: {file_path}\n" + get_file_context(file_path)
+        
+        # Klasör arama
+        folder_patterns = re.findall(r'\b(?:src|lib|test|docs|config|build|dist)\b', query)
+        if folder_patterns:
+            for pattern in folder_patterns:
+                if os.path.exists(pattern):
+                    return f"Bulunan klasör: {pattern}\n" + get_project_context(pattern)
+        
+        return "Dosya/klasör bulunamadı."
+        
+    except Exception as e:
+        return f"Dosya arama hatası: {e}"
 
 @app.command()
 def shell(
@@ -1208,7 +1441,188 @@ def handle_file_commands(command: str, args: List[str]) -> bool:
         console.print(f"[cyan]Mevcut dizin: {os.getcwd()}[/cyan]")
         return True
         
+    elif command == '/tree':
+        """Dosya ağacını gösterir"""
+        try:
+            import subprocess
+            result = subprocess.run(['tree', '-I', '__pycache__|*.pyc|.git'], 
+                                  capture_output=True, text=True, timeout=10)
+            if result.returncode == 0:
+                console.print(Panel(result.stdout, title="🌳 Dosya Ağacı", border_style="green"))
+            else:
+                # tree komutu yoksa manuel ağaç oluştur
+                console.print(Panel(build_file_tree('.'), title="🌳 Dosya Ağacı", border_style="green"))
+        except:
+            console.print(Panel(build_file_tree('.'), title="🌳 Dosya Ağacı", border_style="green"))
+        return True
+        
+    elif command == '/search':
+        """Dosya içeriğinde arama yapar"""
+        if len(args) < 2:
+            console.print("[red]Kullanım: /search <pattern> <dosya_yolu>[/red]")
+            return True
+            
+        pattern = args[0]
+        file_path = args[1]
+        
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+            
+            matches = []
+            for i, line in enumerate(lines, 1):
+                if pattern.lower() in line.lower():
+                    matches.append((i, line.strip()))
+            
+            if matches:
+                result = f"'{pattern}' için {len(matches)} sonuç bulundu:\n\n"
+                for line_num, line in matches[:10]:  # İlk 10 sonuç
+                    result += f"{line_num}: {line}\n"
+                if len(matches) > 10:
+                    result += f"\n... ve {len(matches) - 10} sonuç daha"
+                
+                console.print(Panel(result, title=f"🔍 Arama Sonuçları: {file_path}", border_style="blue"))
+            else:
+                console.print(f"[yellow]'{pattern}' için sonuç bulunamadı[/yellow]")
+                
+        except Exception as e:
+            console.print(f"[red]Arama hatası: {e}[/red]")
+        return True
+        
+    elif command == '/grep':
+        """Regex ile dosya arama"""
+        if len(args) < 2:
+            console.print("[red]Kullanım: /grep <regex_pattern> <dosya_yolu>[/red]")
+            return True
+            
+        import re
+        pattern = args[0]
+        file_path = args[1]
+        
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            matches = re.findall(pattern, content, re.MULTILINE)
+            
+            if matches:
+                result = f"'{pattern}' için {len(matches)} eşleşme bulundu:\n\n"
+                for i, match in enumerate(matches[:10], 1):
+                    result += f"{i}: {match}\n"
+                if len(matches) > 10:
+                    result += f"\n... ve {len(matches) - 10} eşleşme daha"
+                
+                console.print(Panel(result, title=f"🔍 Regex Arama: {file_path}", border_style="blue"))
+            else:
+                console.print(f"[yellow]'{pattern}' için eşleşme bulunamadı[/yellow]")
+                
+        except Exception as e:
+            console.print(f"[red]Regex arama hatası: {e}[/red]")
+        return True
+        
+    elif command == '/diff':
+        """İki dosya arasındaki farkı gösterir"""
+        if len(args) < 2:
+            console.print("[red]Kullanım: /diff <dosya1> <dosya2>[/red]")
+            return True
+            
+        file1, file2 = args[0], args[1]
+        
+        try:
+            import difflib
+            with open(file1, 'r', encoding='utf-8') as f1:
+                lines1 = f1.readlines()
+            with open(file2, 'r', encoding='utf-8') as f2:
+                lines2 = f2.readlines()
+            
+            diff = difflib.unified_diff(lines1, lines2, fromfile=file1, tofile=file2, lineterm='')
+            diff_text = '\n'.join(diff)
+            
+            if diff_text:
+                console.print(Panel(diff_text, title=f"📊 Fark: {file1} vs {file2}", border_style="yellow"))
+            else:
+                console.print("[green]Dosyalar aynı[/green]")
+                
+        except Exception as e:
+            console.print(f"[red]Diff hatası: {e}[/red]")
+        return True
+        
+    elif command == '/stats':
+        """Dosya istatistiklerini gösterir"""
+        if not args:
+            console.print("[red]Kullanım: /stats <dosya_yolu>[/red]")
+            return True
+            
+        file_path = args[0]
+        
+        try:
+            stat = os.stat(file_path)
+            size = stat.st_size
+            modified = datetime.fromtimestamp(stat.st_mtime)
+            
+            # Dosya türü analizi
+            ext = os.path.splitext(file_path)[1].lower()
+            if ext in ['.py', '.js', '.ts', '.java', '.cpp', '.c', '.h']:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+                    code_lines = len([l for l in lines if l.strip()])
+                    comment_lines = len([l for l in lines if l.strip().startswith('#') or l.strip().startswith('//')])
+                    empty_lines = len([l for l in lines if not l.strip()])
+                
+                stats_text = f"""
+Dosya: {file_path}
+Boyut: {size} bytes
+Değiştirilme: {modified}
+Satır sayısı: {len(lines)}
+Kod satırı: {code_lines}
+Yorum satırı: {comment_lines}
+Boş satır: {empty_lines}
+"""
+            else:
+                stats_text = f"""
+Dosya: {file_path}
+Boyut: {size} bytes
+Değiştirilme: {modified}
+"""
+            
+            console.print(Panel(stats_text, title="📊 Dosya İstatistikleri", border_style="cyan"))
+            
+        except Exception as e:
+            console.print(f"[red]İstatistik hatası: {e}[/red]")
+        return True
+        
     return False
+
+def build_file_tree(directory: str, max_depth: int = 3, current_depth: int = 0) -> str:
+    """Manuel dosya ağacı oluşturur"""
+    if current_depth > max_depth:
+        return ""
+    
+    tree = ""
+    try:
+        items = sorted(os.listdir(directory))
+        for i, item in enumerate(items):
+            if item.startswith('.'):
+                continue
+                
+            is_last = i == len(items) - 1
+            prefix = "└── " if is_last else "├── "
+            indent = "    " * current_depth
+            
+            full_path = os.path.join(directory, item)
+            if os.path.isdir(full_path):
+                tree += f"{indent}{prefix}{item}/\n"
+                if current_depth < max_depth:
+                    tree += build_file_tree(full_path, max_depth, current_depth + 1)
+            else:
+                tree += f"{indent}{prefix}{item}\n"
+                
+    except PermissionError:
+        tree += f"{indent}└── [Erişim reddedildi]\n"
+    except Exception as e:
+        tree += f"{indent}└── [Hata: {e}]\n"
+    
+    return tree
 
 def execute_code(code: str, language: str = "python") -> str:
     """Kodu güvenli bir şekilde çalıştırır"""
@@ -1348,43 +1762,38 @@ def show_advanced_help(*args):
                 "/model <ad>": ("Modeli değiştirir.", "Örnek: /model qwen2.5:7b"),
                 "/models": ("Kullanılabilir modelleri listeler.", ""),
                 "/system <prompt>": ("Sistem promptunu değiştirir.", "Örnek: /system Sen bir Python uzmanısın."),
-                "/install <model>": ("Modeli indirir ve yükler.", "Örnek: /install deepseek-coder"),
-                "/troubleshoot": ("Sorun giderme menüsünü açar.", "")
+                "/install <model>": ("Model yükler.", "Örnek: /install llama2:7b"),
             }
         },
-        "multi-model": {
-            "desc": "Çoklu model yönetimi ve karşılaştırma",
+        "context": {
+            "desc": "Context-aware özellikler ve dosya analizi",
             "commands": {
-                "/add-model <alias> <model>": ("Yeni bir model ekler.", "Örnek: /add-model claude claude-3"),
-                "/remove-model <alias>": ("Modeli kaldırır.", ""),
-                "/list-models": ("Aktif modelleri listeler.", ""),
-                "/compare <sorgu>": ("Modelleri karşılaştırır.", "Örnek: /compare Python'da dosya oku"),
-                "/query-model <alias> <sorgu>": ("Belirli bir modelle sorgu yapar.", ""),
-                "/metrics": ("Performans metriklerini gösterir.", ""),
-                "/save-comparison [dosya]": ("Karşılaştırmayı kaydeder.", ""),
-                "/clear-models": ("Model geçmişini temizler.", "")
-            }
-        },
-        "sohbet": {
-            "desc": "Sohbet ve geçmiş yönetimi",
-            "commands": {
-                "/history": ("Sohbet geçmişini gösterir.", ""),
-                "/save <dosya>": ("Sohbet geçmişini kaydeder.", ""),
-                "/load <dosya>": ("Sohbet geçmişini yükler.", ""),
-                "/reset": ("Sohbet geçmişini sıfırlar.", "")
+                "/context": ("Context durumunu gösterir.", ""),
+                "/context on": ("Context-aware modu açar.", ""),
+                "/context off": ("Context-aware modu kapatır.", ""),
+                "/context file <dosya>": ("Context dosyasını ayarlar.", "Örnek: /context file main.py"),
+                "/context clear": ("Context dosyasını temizler.", ""),
+                "/context project": ("Proje context'ini gösterir.", ""),
+                "/context analyze <dosya>": ("Dosya kod analizi yapar.", "Örnek: /context analyze app.py"),
+                "/find <pattern>": ("Akıllı dosya arama yapar.", "Örnek: /find main.py"),
             }
         },
         "dosya": {
-            "desc": "Dosya sistemi ve yönetimi",
+            "desc": "Dosya sistemi ve navigasyon komutları",
             "commands": {
-                "/read <dosya>": ("Dosya okur.", "Örnek: /read README.md"),
-                "/write <dosya> <içerik>": ("Dosya yazar.", "Örnek: /write test.txt Merhaba"),
-                "/list [dizin]": ("Dosyaları listeler.", ""),
-                "/delete <dosya>": ("Dosya/klasör siler.", ""),
-                "/rename <eski> <yeni>": ("Yeniden adlandırır.", ""),
+                "/read <dosya>": ("Dosya içeriğini okur.", "Örnek: /read config.py"),
+                "/write <dosya> <içerik>": ("Dosyaya yazar.", "Örnek: /write test.py print('hello')"),
+                "/list [dizin]": ("Dosyaları listeler.", "Örnek: /list src/"),
+                "/delete <dosya>": ("Dosyayı siler.", "Örnek: /delete temp.txt"),
+                "/rename <eski> <yeni>": ("Dosyayı yeniden adlandırır.", ""),
                 "/mkdir <klasör>": ("Klasör oluşturur.", ""),
-                "/cd <dizin>": ("Dizin değiştirir.", ""),
-                "/pwd": ("Mevcut dizini gösterir.", "")
+                "/cd <dizin>": ("Dizini değiştirir.", ""),
+                "/pwd": ("Mevcut dizini gösterir.", ""),
+                "/tree": ("Dosya ağacını gösterir.", ""),
+                "/search <pattern> <dosya>": ("Dosya içeriğinde arama yapar.", ""),
+                "/grep <regex> <dosya>": ("Regex ile arama yapar.", ""),
+                "/diff <dosya1> <dosya2>": ("İki dosya arasındaki farkı gösterir.", ""),
+                "/stats <dosya>": ("Dosya istatistiklerini gösterir.", ""),
             }
         },
         "kod": {
@@ -2217,14 +2626,20 @@ def chat_loop():
     # Gelişmiş terminal kurulumu
     session = setup_advanced_terminal()
     
+    # Context tracking
+    current_file = None
+    context_enabled = True
+    
     console.print(f"\n[bold green]🚀 CortexCLI başlatıldı![/bold green]")
     console.print(f"[dim]Model: {current_model} | Sistem: {system_prompt[:50]}...[/dim]")
+    console.print(f"[dim]Context-aware mod: {'Açık' if context_enabled else 'Kapalı'}[/dim]")
     console.print(f"[dim]Yardım için /help yazın[/dim]\n")
     
     while True:
         try:
             # Gelişmiş prompt ile kullanıcı girişi
-            user_input = session.prompt(f"[bold cyan]🤖 {current_model}[/bold cyan] > ")
+            context_info = f" [{current_file}]" if current_file else ""
+            user_input = session.prompt(f"[bold cyan]🤖 {current_model}{context_info}[/bold cyan] > ")
             
             if not user_input.strip():
                 continue
@@ -2234,6 +2649,55 @@ def chat_loop():
                 parts = user_input.split()
                 command = parts[0]
                 args = parts[1:] if len(parts) > 1 else []
+                
+                # Context komutları
+                if command == '/context':
+                    if not args:
+                        console.print(f"[cyan]Context durumu: {'Açık' if context_enabled else 'Kapalı'}[/cyan]")
+                        if current_file:
+                            console.print(f"[cyan]Mevcut dosya: {current_file}[/cyan]")
+                        return True
+                    elif args[0] == 'on':
+                        context_enabled = True
+                        console.print("[green]✅ Context-aware mod açıldı[/green]")
+                        return True
+                    elif args[0] == 'off':
+                        context_enabled = False
+                        console.print("[yellow]⚠️ Context-aware mod kapatıldı[/yellow]")
+                        return True
+                    elif args[0] == 'file' and len(args) > 1:
+                        file_path = args[1]
+                        if os.path.exists(file_path):
+                            current_file = file_path
+                            console.print(f"[green]✅ Context dosyası ayarlandı: {file_path}[/green]")
+                            console.print(Panel(get_file_context(file_path, 20), title="📄 Dosya Context'i", border_style="blue"))
+                        else:
+                            console.print(f"[red]❌ Dosya bulunamadı: {file_path}[/red]")
+                        return True
+                    elif args[0] == 'clear':
+                        current_file = None
+                        console.print("[green]✅ Context dosyası temizlendi[/green]")
+                        return True
+                    elif args[0] == 'project':
+                        console.print(Panel(get_project_context(), title="📁 Proje Context'i", border_style="blue"))
+                        return True
+                    elif args[0] == 'analyze' and len(args) > 1:
+                        file_path = args[1]
+                        if os.path.exists(file_path):
+                            console.print(Panel(analyze_code_structure(file_path), title="🔍 Kod Analizi", border_style="green"))
+                        else:
+                            console.print(f"[red]❌ Dosya bulunamadı: {file_path}[/red]")
+                        return True
+                
+                # Akıllı dosya navigasyonu
+                elif command == '/find':
+                    if not args:
+                        console.print("[red]Kullanım: /find <dosya_adı_veya_pattern>[/red]")
+                        return True
+                    query = ' '.join(args)
+                    result = smart_file_navigation(query)
+                    console.print(Panel(result, title="🔍 Dosya Arama", border_style="blue"))
+                    return True
                 
                 # Komut işleme
                 if handle_advanced_commands(command, args):
@@ -2264,7 +2728,13 @@ def chat_loop():
             console.print(f"[dim]🔄 {current_model} düşünüyor...[/dim]")
             
             try:
-                response = query_ollama(user_input, current_model, system_prompt)
+                # Context-aware prompt oluştur
+                if context_enabled:
+                    enhanced_prompt = create_context_aware_prompt(user_input, current_file, include_project=True)
+                else:
+                    enhanced_prompt = user_input
+                
+                response = query_ollama(enhanced_prompt, current_model, system_prompt)
                 
                 if response:
                     # Yanıtı geliştir
@@ -2283,7 +2753,8 @@ def chat_loop():
                             'user': user_input,
                             'assistant': response,
                             'timestamp': datetime.now().isoformat(),
-                            'model': current_model
+                            'model': current_model,
+                            'context_file': current_file
                         })
                         
                 else:

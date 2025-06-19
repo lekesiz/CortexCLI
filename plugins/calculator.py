@@ -176,4 +176,27 @@ commands = {
     '/convert': convert,
     '/solve': solve,
     '/units': units
-} 
+}
+
+class CalculatorPlugin:
+    """Calculator Plugin - Matematik hesaplamaları ve birim dönüşümleri."""
+    
+    def __init__(self):
+        self.name = "Calculator"
+        self.description = "Matematik hesaplamaları ve birim dönüşümleri"
+        self.commands = commands
+        self.help_text = help()
+    
+    def execute(self, command: str, args: list) -> str:
+        """Komutu çalıştırır."""
+        if command in self.commands:
+            try:
+                return self.commands[command](*args)
+            except Exception as e:
+                return f"[HATA] Komut çalıştırma hatası: {e}"
+        else:
+            return f"[HATA] Bilinmeyen komut: {command}"
+    
+    def get_help(self) -> str:
+        """Yardım metnini döndürür."""
+        return self.help_text 

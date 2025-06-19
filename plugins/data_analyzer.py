@@ -213,4 +213,27 @@ commands = {
     '/boxplot': boxplot,
     '/heatmap': heatmap,
     '/clean': clean
-} 
+}
+
+class DataAnalyzerPlugin:
+    """Data Analyzer Plugin - CSV dosyalarını analiz eder ve görselleştirir."""
+    
+    def __init__(self):
+        self.name = "Data Analyzer"
+        self.description = "CSV dosyalarını analiz eder ve görselleştirir"
+        self.commands = commands
+        self.help_text = help()
+    
+    def execute(self, command: str, args: list) -> str:
+        """Komutu çalıştırır."""
+        if command in self.commands:
+            try:
+                return self.commands[command](*args)
+            except Exception as e:
+                return f"[HATA] Komut çalıştırma hatası: {e}"
+        else:
+            return f"[HATA] Bilinmeyen komut: {command}"
+    
+    def get_help(self) -> str:
+        """Yardım metnini döndürür."""
+        return self.help_text 

@@ -402,11 +402,38 @@ class WebInterface:
                 analyzer = DataAnalyzerPlugin()
                 
                 if analysis_type == 'describe':
-                    result = analyzer.describe_csv(f"output/{filename}")
+                    result = analyzer.execute('/describe', [f"output/{filename}"])
+                elif analysis_type == 'analyze':
+                    result = analyzer.execute('/analyze', [f"output/{filename}"])
                 elif analysis_type == 'plot':
                     plot_type = data.get('plot_type', 'line')
                     columns = data.get('columns', [])
-                    result = analyzer.plot_csv(f"output/{filename}", plot_type, columns)
+                    if len(columns) >= 2:
+                        result = analyzer.execute('/plot', [f"output/{filename}", columns[0], columns[1]])
+                    else:
+                        return jsonify({'success': False, 'error': 'En az 2 kolon gerekli'}), 400
+                elif analysis_type == 'histogram':
+                    column = data.get('column')
+                    if column:
+                        result = analyzer.execute('/histogram', [f"output/{filename}", column])
+                    else:
+                        return jsonify({'success': False, 'error': 'Kolon belirtilmeli'}), 400
+                elif analysis_type == 'scatter':
+                    columns = data.get('columns', [])
+                    if len(columns) >= 2:
+                        result = analyzer.execute('/scatter', [f"output/{filename}", columns[0], columns[1]])
+                    else:
+                        return jsonify({'success': False, 'error': 'En az 2 kolon gerekli'}), 400
+                elif analysis_type == 'boxplot':
+                    column = data.get('column')
+                    if column:
+                        result = analyzer.execute('/boxplot', [f"output/{filename}", column])
+                    else:
+                        return jsonify({'success': False, 'error': 'Kolon belirtilmeli'}), 400
+                elif analysis_type == 'heatmap':
+                    result = analyzer.execute('/heatmap', [f"output/{filename}"])
+                elif analysis_type == 'clean':
+                    result = analyzer.execute('/clean', [f"output/{filename}"])
                 else:
                     return jsonify({'success': False, 'error': 'Geçersiz analiz türü'}), 400
                 

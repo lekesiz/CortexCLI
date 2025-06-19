@@ -212,4 +212,27 @@ def handle_note_command(*args):
         return categories()
     
     else:
-        return help() 
+        return help()
+
+class NotesPlugin:
+    """Notes Plugin - Not alma ve yönetimi."""
+    
+    def __init__(self):
+        self.name = "Notes"
+        self.description = "Not alma ve yönetimi"
+        self.commands = commands
+        self.help_text = help()
+    
+    def execute(self, command: str, args: list) -> str:
+        """Komutu çalıştırır."""
+        if command in self.commands:
+            try:
+                return self.commands[command](*args)
+            except Exception as e:
+                return f"[HATA] Komut çalıştırma hatası: {e}"
+        else:
+            return f"[HATA] Bilinmeyen komut: {command}"
+    
+    def get_help(self) -> str:
+        """Yardım metnini döndürür."""
+        return self.help_text 

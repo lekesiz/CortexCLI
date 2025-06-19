@@ -341,4 +341,27 @@ def handle_calendar_command(*args):
         return upcoming_events()
     
     else:
-        return help() 
+        return help()
+
+class CalendarPlugin:
+    """Calendar Plugin - Takvim ve etkinlik yönetimi."""
+    
+    def __init__(self):
+        self.name = "Calendar"
+        self.description = "Takvim ve etkinlik yönetimi"
+        self.commands = commands
+        self.help_text = help()
+    
+    def execute(self, command: str, args: list) -> str:
+        """Komutu çalıştırır."""
+        if command in self.commands:
+            try:
+                return self.commands[command](*args)
+            except Exception as e:
+                return f"[HATA] Komut çalıştırma hatası: {e}"
+        else:
+            return f"[HATA] Bilinmeyen komut: {command}"
+    
+    def get_help(self) -> str:
+        """Yardım metnini döndürür."""
+        return self.help_text 
