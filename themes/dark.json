@@ -1,0 +1,16 @@
+{
+  "name": "Dark Theme",
+  "description": "Koyu tema",
+  "colors": {
+    "primary": "#3b82f6",
+    "secondary": "#64748b",
+    "background": "#0f172a",
+    "surface": "#1e293b",
+    "text": "#f1f5f9",
+    "text-secondary": "#94a3b8",
+    "border": "#334155",
+    "success": "#10b981",
+    "warning": "#f59e0b",
+    "error": "#ef4444"
+  }
+} 

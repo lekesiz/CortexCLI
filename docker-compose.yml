@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  cortexcli:
+    build: .
+    container_name: cortexcli
+    ports:
+      - "5000:5000"  # Web interface
+      - "11434:11434"  # Ollama API
+    volumes:
+      - ./output:/app/output
+      - ./plugins:/app/plugins
+      - ./chat_history:/app/chat_history
+      - ollama_data:/root/.ollama
+    environment:
+      - PYTHONPATH=/app
+      - OLLAMA_HOST=0.0.0.0
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    command: >
+      sh -c "
+        ollama serve &
+        sleep 10 &&
+        ollama pull qwen2.5:7b &
+        python llm_shell.py web
+      "
+
+  # Alternative: CLI-only mode
+  cortexcli-cli:
+    build: .
+    container_name: cortexcli-cli
+    volumes:
+      - ./output:/app/output
+      - ./plugins:/app/plugins
+      - ./chat_history:/app/chat_history
+      - ollama_data:/root/.ollama
+    environment:
+      - PYTHONPATH=/app
+      - OLLAMA_HOST=0.0.0.0
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    command: >
+      sh -c "
+        ollama serve &
+        sleep 10 &&
+        ollama pull qwen2.5:7b &
+        python llm_shell.py start
+      "
+
+volumes:
+  ollama_data:
+    driver: local 

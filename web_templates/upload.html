@@ -1,0 +1,221 @@
+{% extends 'base.html' %}
+{% block title %}CSV Yükle & Veri Analizi - CortexCLI{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-4"><i class="fas fa-upload me-2"></i>CSV Yükle & Veri Analizi</h2>
+    <form id="upload-form" enctype="multipart/form-data">
+        <div class="mb-3">
+            <input type="file" name="file" id="csv-file" accept=".csv" class="form-control" required>
+        </div>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-upload me-1"></i>Yükle</button>
+    </form>
+    <div id="upload-status" class="mt-3"></div>
+    <div id="analyze-panel" class="mt-4" style="display:none;">
+        <h5>Analiz & Grafik</h5>
+        <div class="row mb-3">
+            <div class="col-md-2">
+                <button class="btn btn-outline-info btn-sm w-100" onclick="analyzeCSV()">Analiz Et</button>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-outline-secondary btn-sm w-100" onclick="describeCSV()">İstatistik</button>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-outline-warning btn-sm w-100" onclick="cleanCSV()">Temizle</button>
+            </div>
+            <div class="col-md-2">
+                <button class="btn btn-outline-danger btn-sm w-100" onclick="heatmapCSV()">Heatmap</button>
+            </div>
+        </div>
+        
+        <!-- Grafik Türü Seçimi -->
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <select id="chart-type" class="form-control" onchange="updateChartControls()">
+                    <option value="plot">Line Plot</option>
+                    <option value="scatter">Scatter Plot</option>
+                    <option value="histogram">Histogram</option>
+                    <option value="boxplot">Box Plot</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <input type="text" id="col1" class="form-control" placeholder="Kolon 1 (x)">
+            </div>
+            <div class="col-md-3">
+                <input type="text" id="col2" class="form-control" placeholder="Kolon 2 (y)">
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-outline-success w-100" onclick="generateChart()">
+                    <i class="fas fa-chart-line me-1"></i>Çiz
+                </button>
+            </div>
+        </div>
+        
+        <div id="analyze-result" class="mt-3"></div>
+        <div id="plot-result" class="mt-3"></div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+let uploadedFile = '';
+
+document.getElementById('upload-form').onsubmit = function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    document.getElementById('upload-status').innerHTML = '<div class="alert alert-info">Yükleniyor...</div>';
+    fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            uploadedFile = data.filename;
+            document.getElementById('upload-status').innerHTML = '<div class="alert alert-success">Yükleme başarılı: ' + data.filename + '</div>';
+            document.getElementById('analyze-panel').style.display = '';
+        } else {
+            document.getElementById('upload-status').innerHTML = '<div class="alert alert-danger">' + data.error + '</div>';
+        }
+    });
+};
+
+function analyzeCSV() {
+    if (!uploadedFile) return;
+    document.getElementById('analyze-result').innerHTML = '<div class="alert alert-info">Analiz ediliyor...</div>';
+    fetch('/api/data-analyze', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({csv_file: uploadedFile, action: 'analyze'})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('analyze-result').innerHTML = '<pre>' + data.result + '</pre>';
+        } else {
+            document.getElementById('analyze-result').innerHTML = '<div class="alert alert-danger">' + data.error + '</div>';
+        }
+    });
+}
+
+function describeCSV() {
+    if (!uploadedFile) return;
+    document.getElementById('analyze-result').innerHTML = '<div class="alert alert-info">İstatistik hesaplanıyor...</div>';
+    fetch('/api/data-analyze', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({csv_file: uploadedFile, action: 'describe'})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('analyze-result').innerHTML = '<pre>' + data.result + '</pre>';
+        } else {
+            document.getElementById('analyze-result').innerHTML = '<div class="alert alert-danger">' + data.error + '</div>';
+        }
+    });
+}
+
+function cleanCSV() {
+    if (!uploadedFile) return;
+    document.getElementById('analyze-result').innerHTML = '<div class="alert alert-info">CSV temizleniyor...</div>';
+    fetch('/api/data-analyze', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({csv_file: uploadedFile, action: 'clean'})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('analyze-result').innerHTML = '<div class="alert alert-success">CSV temizlendi.</div>';
+            document.getElementById('analyze-panel').style.display = 'none';
+        } else {
+            document.getElementById('analyze-result').innerHTML = '<div class="alert alert-danger">' + data.error + '</div>';
+        }
+    });
+}
+
+function heatmapCSV() {
+    if (!uploadedFile) return;
+    document.getElementById('analyze-result').innerHTML = '<div class="alert alert-info">Heatmap oluşturuluyor...</div>';
+    fetch('/api/data-analyze', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({csv_file: uploadedFile, action: 'heatmap'})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success && data.img_path) {
+            document.getElementById('plot-result').innerHTML = '<img src="/output/' + data.img_path.split('/').pop() + '" class="img-fluid border rounded">';
+        } else {
+            document.getElementById('plot-result').innerHTML = '<div class="alert alert-danger">' + (data.error || data.result) + '</div>';
+        }
+    });
+}
+
+function updateChartControls() {
+    const chartType = document.getElementById('chart-type').value;
+    const col1 = document.getElementById('col1').value.trim();
+    const col2 = document.getElementById('col2').value.trim();
+    if (!col1 || !col2) {
+        document.getElementById('plot-result').innerHTML = '<div class="alert alert-warning">Kolon isimlerini girin.</div>';
+        return;
+    }
+    document.getElementById('plot-result').innerHTML = '<div class="alert alert-info">Grafik çiziliyor...</div>';
+    fetch('/api/data-analyze', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({csv_file: uploadedFile, action: 'plot', col1, col2, chart_type: chartType})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success && data.img_path) {
+            document.getElementById('plot-result').innerHTML = '<img src="/output/' + data.img_path.split('/').pop() + '" class="img-fluid border rounded">';
+        } else {
+            document.getElementById('plot-result').innerHTML = '<div class="alert alert-danger">' + (data.error || data.result) + '</div>';
+        }
+    });
+}
+
+function generateChart() {
+    if (!uploadedFile) return;
+    const chartType = document.getElementById('chart-type').value;
+    const col1 = document.getElementById('col1').value.trim();
+    const col2 = document.getElementById('col2').value.trim();
+    
+    if (!col1) {
+        alert('En az bir kolon gerekli!');
+        return;
+    }
+    
+    document.getElementById('plot-result').innerHTML = '<div class="alert alert-info">Grafik oluşturuluyor...</div>';
+    
+    let action = chartType;
+    let payload = {csv_file: uploadedFile, action: action};
+    
+    if (chartType === 'histogram' || chartType === 'boxplot') {
+        payload.column = col1;
+    } else {
+        if (!col2) {
+            alert('İki kolon gerekli!');
+            return;
+        }
+        payload.col1 = col1;
+        payload.col2 = col2;
+    }
+    
+    fetch('/api/data-analyze', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success && data.img_path) {
+            document.getElementById('plot-result').innerHTML = '<img src="/output/' + data.img_path.split('/').pop() + '" class="img-fluid border rounded">';
+        } else {
+            document.getElementById('plot-result').innerHTML = '<div class="alert alert-danger">' + (data.error || data.result) + '</div>';
+        }
+    });
+}
+</script>
+{% endblock %} 

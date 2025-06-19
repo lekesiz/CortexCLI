@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% block title %}Yardım & Dokümantasyon - CortexCLI{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-4"><i class="fas fa-question-circle me-2"></i>Yardım & Dokümantasyon</h2>
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <input type="text" id="help-search" class="form-control" placeholder="Komut veya kategori ara...">
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-3">
+            <div class="list-group" id="help-categories">
+                <!-- Kategoriler buraya gelecek -->
+            </div>
+        </div>
+        <div class="col-md-9">
+            <div id="help-details">
+                <div class="alert alert-info">Bir kategori seçin veya arama yapın.</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+let helpData = {};
+
+function renderCategories() {
+    const catList = document.getElementById('help-categories');
+    catList.innerHTML = '';
+    Object.entries(helpData).forEach(([cat, val]) => {
+        const btn = document.createElement('button');
+        btn.className = 'list-group-item list-group-item-action';
+        btn.textContent = cat.charAt(0).toUpperCase() + cat.slice(1) + ' (' + val.desc + ')';
+        btn.onclick = () => renderCategory(cat);
+        catList.appendChild(btn);
+    });
+}
+
+function renderCategory(cat) {
+    const details = document.getElementById('help-details');
+    const val = helpData[cat];
+    let html = `<h4>${cat.charAt(0).toUpperCase() + cat.slice(1)} <small class='text-muted'>${val.desc}</small></h4>`;
+    html += '<table class="table table-bordered table-sm mt-3"><thead><tr><th>Komut</th><th>Açıklama</th><th>Örnek</th></tr></thead><tbody>';
+    Object.entries(val.commands).forEach(([cmd, arr]) => {
+        html += `<tr><td><code>${cmd}</code></td><td>${arr[0]}</td><td>${arr[1]||''}</td></tr>`;
+    });
+    html += '</tbody></table>';
+    details.innerHTML = html;
+}
+
+function renderSearch(query) {
+    const details = document.getElementById('help-details');
+    query = query.toLowerCase();
+    let found = [];
+    Object.entries(helpData).forEach(([cat, val]) => {
+        Object.entries(val.commands).forEach(([cmd, arr]) => {
+            if (cmd.toLowerCase().includes(query) || arr[0].toLowerCase().includes(query)) {
+                found.push({cat, cmd, desc: arr[0], ex: arr[1]});
+            }
+        });
+    });
+    if (found.length === 0) {
+        details.innerHTML = '<div class="alert alert-warning">Sonuç bulunamadı.</div>';
+        return;
+    }
+    let html = `<h5>Arama Sonuçları (${found.length})</h5>`;
+    html += '<table class="table table-bordered table-sm mt-3"><thead><tr><th>Kategori</th><th>Komut</th><th>Açıklama</th><th>Örnek</th></tr></thead><tbody>';
+    found.forEach(row => {
+        html += `<tr><td>${row.cat}</td><td><code>${row.cmd}</code></td><td>${row.desc}</td><td>${row.ex||''}</td></tr>`;
+    });
+    html += '</tbody></table>';
+    details.innerHTML = html;
+}
+
+function fetchHelp() {
+    fetch('/api/help')
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                helpData = data.help;
+                renderCategories();
+            }
+        });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    fetchHelp();
+    document.getElementById('help-search').addEventListener('input', function() {
+        const q = this.value.trim();
+        if (q.length === 0) {
+            document.getElementById('help-details').innerHTML = '<div class="alert alert-info">Bir kategori seçin veya arama yapın.</div>';
+            return;
+        }
+        renderSearch(q);
+    });
+});
+</script>
+{% endblock %} 

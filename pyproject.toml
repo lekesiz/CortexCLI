@@ -1,0 +1,178 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cortexcli"
+version = "1.0.0"
+description = "A powerful AI assistant CLI with Ollama integration, plugin system, and web interface"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Your Name", email = "your.email@example.com"}
+]
+maintainers = [
+    {name = "Your Name", email = "your.email@example.com"}
+]
+keywords = ["ai", "assistant", "cli", "ollama", "llm", "chat", "terminal", "shell", "plugin", "web-interface", "code-execution", "multi-model"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: System :: Shells",
+    "Topic :: Terminals",
+    "Topic :: Utilities",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "typer>=0.9.0",
+    "rich>=13.0.0",
+    "requests>=2.31.0",
+    "click>=8.1.0",
+    "prompt_toolkit>=3.0.0",
+    "docker>=6.0.0",
+    "flask>=2.3.0",
+    "flask-socketio>=5.3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+    "pre-commit>=3.0.0",
+]
+web = [
+    "flask>=2.3.0",
+    "flask-socketio>=5.3.0",
+]
+docker = [
+    "docker>=6.0.0",
+]
+full = [
+    "flask>=2.3.0",
+    "flask-socketio>=5.3.0",
+    "docker>=6.0.0",
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/cortexcli"
+Documentation = "https://github.com/yourusername/cortexcli#readme"
+Repository = "https://github.com/yourusername/cortexcli"
+"Bug Tracker" = "https://github.com/yourusername/cortexcli/issues"
+"Source Code" = "https://github.com/yourusername/cortexcli"
+
+[project.scripts]
+cortexcli = "llm_shell:main"
+cortex = "llm_shell:main"
+
+[tool.setuptools]
+py-modules = [
+    "llm_shell",
+    "config",
+    "plugin_system",
+    "multi_model",
+    "advanced_code_execution",
+    "web_interface"
+]
+
+[tool.setuptools.package-data]
+"*" = [
+    "web_templates/*.html",
+    "web_static/*",
+    "plugins/*.py",
+    "*.md",
+    "*.txt",
+    "*.sh"
+]
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+known_first_party = ["cortexcli"]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --strict-markers --strict-config"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/env/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+] 

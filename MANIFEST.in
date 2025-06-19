@@ -1,0 +1,30 @@
+include README.md
+include LICENSE
+include requirements.txt
+include install.sh
+include examples.md
+include cortexai
+
+recursive-include web_templates *.html
+recursive-include web_static *
+recursive-include plugins *.py
+recursive-include tests *.py
+
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude *.pyd
+global-exclude __pycache__
+global-exclude *.so
+global-exclude .DS_Store
+global-exclude .git*
+global-exclude .env
+global-exclude .venv
+global-exclude venv
+global-exclude env
+global-exclude .pytest_cache
+global-exclude .mypy_cache
+global-exclude .coverage
+global-exclude htmlcov
+global-exclude dist
+global-exclude build
+global-exclude *.egg-info 

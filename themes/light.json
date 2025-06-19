@@ -1,0 +1,16 @@
+{
+  "name": "Light Theme",
+  "description": "Açık tema",
+  "colors": {
+    "primary": "#2563eb",
+    "secondary": "#64748b",
+    "background": "#ffffff",
+    "surface": "#f8fafc",
+    "text": "#1e293b",
+    "text-secondary": "#64748b",
+    "border": "#e2e8f0",
+    "success": "#10b981",
+    "warning": "#f59e0b",
+    "error": "#ef4444"
+  }
+} 

@@ -1,0 +1,643 @@
+{% extends "base.html" %}
+
+{% block title %}Kod Editörü - CortexCLI{% endblock %}
+
+{% block extra_css %}
+<style>
+.code-editor-container {
+    height: calc(100vh - 200px);
+    display: flex;
+    flex-direction: column;
+}
+
+.editor-toolbar {
+    background: rgba(31, 41, 55, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px 8px 0 0;
+    padding: 1rem;
+}
+
+.code-area {
+    flex: 1;
+    display: flex;
+    gap: 1rem;
+}
+
+.editor-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.output-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: rgba(31, 41, 55, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
+.code-textarea {
+    flex: 1;
+    background: #1e1e1e;
+    border: none;
+    color: #d4d4d4;
+    font-family: 'Fira Code', 'Consolas', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 1rem;
+    resize: none;
+    border-radius: 0 0 8px 8px;
+}
+
+.output-content {
+    flex: 1;
+    padding: 1rem;
+    overflow-y: auto;
+    font-family: 'Fira Code', 'Consolas', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.output-header {
+    background: rgba(31, 41, 55, 0.9);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0.75rem 1rem;
+    border-radius: 8px 8px 0 0;
+}
+
+.execution-time {
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+.success-output {
+    color: #10b981;
+}
+
+.error-output {
+    color: #ef4444;
+}
+
+.warning-output {
+    color: #f59e0b;
+}
+
+.analysis-panel {
+    background: rgba(31, 41, 55, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    margin-top: 1rem;
+}
+
+.analysis-item {
+    padding: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.analysis-item:last-child {
+    border-bottom: none;
+}
+
+.severity-high {
+    border-left: 4px solid #ef4444;
+}
+
+.severity-medium {
+    border-left: 4px solid #f59e0b;
+}
+
+.severity-low {
+    border-left: 4px solid #10b981;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sol Panel - Kod Editörü -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-code me-2"></i>Kod Editörü</h5>
+                    <div>
+                        <select id="language-select" class="form-select form-select-sm d-inline-block w-auto me-2">
+                            <option value="python">Python</option>
+                            <option value="javascript">JavaScript</option>
+                            <option value="bash">Bash</option>
+                            <option value="html">HTML</option>
+                            <option value="css">CSS</option>
+                            <option value="sql">SQL</option>
+                            <option value="json">JSON</option>
+                        </select>
+                        <button class="btn btn-success btn-sm" onclick="executeCode()">
+                            <i class="fas fa-play me-1"></i>Çalıştır
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="addCell()">
+                            <i class="fas fa-plus me-1"></i>Hücre Ekle
+                        </button>
+                        <button class="btn btn-outline-info btn-sm" onclick="analyzeCode()">
+                            <i class="fas fa-search me-1"></i>Analiz Et
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Kod Hücreleri -->
+                    <div id="code-cells">
+                        <div class="code-cell mb-3">
+                            <div class="cell-header d-flex justify-content-between align-items-center mb-2">
+                                <span class="badge bg-primary">Hücre 1</span>
+                                <div>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteCell(this)">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-success" onclick="runCell(this)">
+                                        <i class="fas fa-play"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="code-editor">
+                                <textarea class="form-control code-textarea" rows="8" placeholder="Kodunuzu buraya yazın...">print("Merhaba, CortexCLI!")
+
+# Basit bir hesaplama
+x = 10
+y = 20
+print(f"Toplam: {x + y}")
+
+# Liste işlemleri
+numbers = [1, 2, 3, 4, 5]
+squares = [n**2 for n in numbers]
+print(f"Sayılar: {numbers}")
+print(f"Kareler: {squares}")</textarea>
+                            </div>
+                            <div class="cell-output mt-2" style="display: none;">
+                                <div class="output-header">
+                                    <span class="badge bg-success">Çıktı</span>
+                                    <small class="text-muted ms-2">Çalıştırma süresi: <span class="execution-time">0ms</span></small>
+                                </div>
+                                <div class="output-content border rounded p-2 bg-light">
+                                    <!-- Çıktı burada gösterilecek -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sağ Panel - Yardım ve Örnekler -->
+        <div class="col-md-4">
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6><i class="fas fa-lightbulb me-2"></i>Hızlı Örnekler</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-primary btn-sm" onclick="loadExample('hello')">
+                            Merhaba Dünya
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" onclick="loadExample('math')">
+                            Matematik
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" onclick="loadExample('list')">
+                            Liste İşlemleri
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" onclick="loadExample('file')">
+                            Dosya İşlemleri
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" onclick="loadExample('plot')">
+                            Grafik Çizimi
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm" onclick="loadExample('api')">
+                            API Çağrısı
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h6><i class="fas fa-keyboard me-2"></i>Klavye Kısayolları</h6>
+                </div>
+                <div class="card-body">
+                    <div class="small">
+                        <div class="mb-1"><kbd>Ctrl+Enter</kbd> Hücreyi çalıştır</div>
+                        <div class="mb-1"><kbd>Shift+Enter</kbd> Yeni hücre ekle</div>
+                        <div class="mb-1"><kbd>Ctrl+Shift+Enter</kbd> Tümünü çalıştır</div>
+                        <div class="mb-1"><kbd>Ctrl+S</kbd> Kaydet</div>
+                        <div class="mb-1"><kbd>Ctrl+Z</kbd> Geri al</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h6><i class="fas fa-info-circle me-2"></i>Kod Analizi</h6>
+                </div>
+                <div class="card-body">
+                    <div id="code-analysis">
+                        <div class="text-muted text-center">
+                            <i class="fas fa-chart-bar fa-2x mb-2"></i>
+                            <p>Kod analizi için "Analiz Et" butonuna tıklayın</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Kod Analizi Modal -->
+<div class="modal fade" id="analysisModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Kod Analizi</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="analysisContent">
+                <!-- Analiz sonuçları burada gösterilecek -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let cellCounter = 1;
+
+// Klavye kısayolları
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key === 'Enter') {
+        e.preventDefault();
+        executeCode();
+    } else if (e.shiftKey && e.key === 'Enter') {
+        e.preventDefault();
+        addCell();
+    } else if (e.ctrlKey && e.shiftKey && e.key === 'Enter') {
+        e.preventDefault();
+        executeAllCells();
+    } else if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        saveCode();
+    }
+});
+
+function addCell() {
+    cellCounter++;
+    const cellHtml = `
+        <div class="code-cell mb-3">
+            <div class="cell-header d-flex justify-content-between align-items-center mb-2">
+                <span class="badge bg-primary">Hücre ${cellCounter}</span>
+                <div>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteCell(this)">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-success" onclick="runCell(this)">
+                        <i class="fas fa-play"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="code-editor">
+                <textarea class="form-control code-textarea" rows="6" placeholder="Kodunuzu buraya yazın..."></textarea>
+            </div>
+            <div class="cell-output mt-2" style="display: none;">
+                <div class="output-header">
+                    <span class="badge bg-success">Çıktı</span>
+                    <small class="text-muted ms-2">Çalıştırma süresi: <span class="execution-time">0ms</span></small>
+                </div>
+                <div class="output-content border rounded p-2 bg-light">
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('code-cells').insertAdjacentHTML('beforeend', cellHtml);
+}
+
+function deleteCell(button) {
+    const cell = button.closest('.code-cell');
+    if (document.querySelectorAll('.code-cell').length > 1) {
+        cell.remove();
+    } else {
+        alert('En az bir kod hücresi olmalıdır!');
+    }
+}
+
+function runCell(button) {
+    const cell = button.closest('.code-cell');
+    const textarea = cell.querySelector('.code-textarea');
+    const output = cell.querySelector('.cell-output');
+    const outputContent = cell.querySelector('.output-content');
+    const executionTime = cell.querySelector('.execution-time');
+    
+    const code = textarea.value;
+    const language = document.getElementById('language-select').value;
+    
+    if (!code.trim()) {
+        alert('Çalıştırılacak kod yok!');
+        return;
+    }
+    
+    // Çalıştırma göstergesi
+    output.style.display = 'block';
+    outputContent.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Çalıştırılıyor...</div>';
+    
+    const startTime = Date.now();
+    
+    fetch('/api/code/execute', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({code: code, language: language})
+    })
+    .then(r => r.json())
+    .then(data => {
+        const endTime = Date.now();
+        const executionTimeMs = endTime - startTime;
+        
+        if (data.success) {
+            outputContent.innerHTML = `
+                <div class="text-success">
+                    <strong>Çıktı:</strong><br>
+                    <pre class="mb-0">${data.output}</pre>
+                </div>
+            `;
+        } else {
+            outputContent.innerHTML = `
+                <div class="text-danger">
+                    <strong>Hata:</strong><br>
+                    <pre class="mb-0">${data.error}</pre>
+                </div>
+            `;
+        }
+        
+        executionTime.textContent = `${executionTimeMs}ms`;
+    })
+    .catch(error => {
+        outputContent.innerHTML = `
+            <div class="text-danger">
+                <strong>Bağlantı Hatası:</strong><br>
+                <pre class="mb-0">${error.message}</pre>
+            </div>
+        `;
+    });
+}
+
+function executeCode() {
+    // İlk hücreyi çalıştır
+    const firstCell = document.querySelector('.code-cell');
+    const button = firstCell.querySelector('.btn-outline-success');
+    runCell(button);
+}
+
+function executeAllCells() {
+    const cells = document.querySelectorAll('.code-cell');
+    cells.forEach((cell, index) => {
+        setTimeout(() => {
+            const button = cell.querySelector('.btn-outline-success');
+            runCell(button);
+        }, index * 500); // Her hücreyi 500ms arayla çalıştır
+    });
+}
+
+function analyzeCode() {
+    const code = document.querySelector('.code-textarea').value;
+    const language = document.getElementById('language-select').value;
+    
+    if (!code.trim()) {
+        alert('Analiz edilecek kod yok!');
+        return;
+    }
+    
+    fetch('/api/code/analyze', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({code: code, language: language})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            displayAnalysis(data.analysis);
+        } else {
+            alert('Kod analizi hatası: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Bağlantı hatası: ' + error.message);
+    });
+}
+
+function displayAnalysis(analysis) {
+    const content = document.getElementById('analysisContent');
+    let html = '<div class="row">';
+    
+    // Güvenlik analizi
+    if (analysis.security) {
+        html += `
+            <div class="col-md-6 mb-3">
+                <h6>🔒 Güvenlik Analizi</h6>
+                <div class="list-group">
+                    ${analysis.security.issues.map(issue => `
+                        <div class="list-group-item list-group-item-${issue.severity === 'high' ? 'danger' : issue.severity === 'medium' ? 'warning' : 'info'}">
+                            <strong>${issue.type}</strong><br>
+                            <small>${issue.description}</small>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    // Performans analizi
+    if (analysis.performance) {
+        html += `
+            <div class="col-md-6 mb-3">
+                <h6>⚡ Performans Analizi</h6>
+                <div class="list-group">
+                    ${analysis.performance.suggestions.map(suggestion => `
+                        <div class="list-group-item">
+                            <strong>${suggestion.type}</strong><br>
+                            <small>${suggestion.description}</small>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    // Kod kalitesi
+    if (analysis.quality) {
+        html += `
+            <div class="col-md-6 mb-3">
+                <h6>📊 Kod Kalitesi</h6>
+                <div class="list-group">
+                    <div class="list-group-item">
+                        <strong>Satır Sayısı:</strong> ${analysis.quality.lines}
+                    </div>
+                    <div class="list-group-item">
+                        <strong>Karmaşıklık:</strong> ${analysis.quality.complexity}
+                    </div>
+                    <div class="list-group-item">
+                        <strong>Okunabilirlik:</strong> ${analysis.quality.readability}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Öneriler
+    if (analysis.suggestions) {
+        html += `
+            <div class="col-md-6 mb-3">
+                <h6>💡 Öneriler</h6>
+                <div class="list-group">
+                    ${analysis.suggestions.map(suggestion => `
+                        <div class="list-group-item">
+                            <small>${suggestion}</small>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    html += '</div>';
+    content.innerHTML = html;
+    
+    new bootstrap.Modal(document.getElementById('analysisModal')).show();
+}
+
+function loadExample(type) {
+    const examples = {
+        'hello': `print("Merhaba, Dünya!")
+print("CortexCLI'ye hoş geldiniz!")
+
+# Basit bir hesaplama
+name = "Kullanıcı"
+age = 25
+print(f"Merhaba {name}, yaşınız {age}")`,
+        
+        'math': `import math
+
+# Matematik işlemleri
+a = 10
+b = 5
+
+print(f"Toplama: {a + b}")
+print(f"Çıkarma: {a - b}")
+print(f"Çarpma: {a * b}")
+print(f"Bölme: {a / b}")
+print(f"Üs alma: {a ** b}")
+print(f"Karekök: {math.sqrt(a)}")
+print(f"Pi: {math.pi}")`,
+        
+        'list': `# Liste işlemleri
+numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+print("Orijinal liste:", numbers)
+print("İlk 5 eleman:", numbers[:5])
+print("Son 5 eleman:", numbers[-5:])
+print("Çift sayılar:", [n for n in numbers if n % 2 == 0])
+print("Kareler:", [n**2 for n in numbers])
+print("Toplam:", sum(numbers))
+print("Ortalama:", sum(numbers) / len(numbers))`,
+        
+        'file': `import os
+
+# Dosya işlemleri
+filename = "test.txt"
+
+# Dosya yazma
+with open(filename, 'w', encoding='utf-8') as f:
+    f.write("Bu bir test dosyasıdır.\\n")
+    f.write("CortexCLI ile oluşturuldu.\\n")
+
+# Dosya okuma
+with open(filename, 'r', encoding='utf-8') as f:
+    content = f.read()
+    print("Dosya içeriği:")
+    print(content)
+
+# Dosya bilgileri
+if os.path.exists(filename):
+    size = os.path.getsize(filename)
+    print(f"\\nDosya boyutu: {size} byte")`,
+        
+        'plot': `import matplotlib.pyplot as plt
+import numpy as np
+
+# Veri oluştur
+x = np.linspace(0, 10, 100)
+y = np.sin(x)
+
+# Grafik çiz
+plt.figure(figsize=(10, 6))
+plt.plot(x, y, 'b-', label='sin(x)')
+plt.plot(x, np.cos(x), 'r--', label='cos(x)')
+plt.xlabel('x')
+plt.ylabel('y')
+plt.title('Trigonometrik Fonksiyonlar')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+print("Grafik çizildi!")`,
+        
+        'api': `import requests
+
+# API çağrısı örneği
+try:
+    response = requests.get('https://jsonplaceholder.typicode.com/posts/1')
+    if response.status_code == 200:
+        data = response.json()
+        print("API Yanıtı:")
+        print(f"Başlık: {data['title']}")
+        print(f"İçerik: {data['body'][:100]}...")
+    else:
+        print(f"API hatası: {response.status_code}")
+except Exception as e:
+    print(f"Bağlantı hatası: {e}")`
+    };
+    
+    const textarea = document.querySelector('.code-textarea');
+    textarea.value = examples[type] || examples['hello'];
+}
+
+function saveCode() {
+    const cells = document.querySelectorAll('.code-cell');
+    let code = '';
+    
+    cells.forEach((cell, index) => {
+        const textarea = cell.querySelector('.code-textarea');
+        code += `# Hücre ${index + 1}\n${textarea.value}\n\n`;
+    });
+    
+    const language = document.getElementById('language-select').value;
+    const extension = {
+        'python': '.py',
+        'javascript': '.js',
+        'bash': '.sh',
+        'html': '.html',
+        'css': '.css',
+        'sql': '.sql',
+        'json': '.json'
+    }[language] || '.txt';
+    
+    const filename = `code_${Date.now()}${extension}`;
+    
+    // Dosyayı indir
+    const blob = new Blob([code], {type: 'text/plain'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    alert(`Kod ${filename} olarak kaydedildi!`);
+}
+</script>
+{% endblock %} 

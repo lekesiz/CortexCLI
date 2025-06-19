@@ -1,5 +1,5 @@
 """
-DQai - Konfigürasyon Dosyası
+CortexCLI - Konfigürasyon Dosyası
 Uygulama ayarları ve varsayılan değerler
 """
 
@@ -8,10 +8,15 @@ from typing import Dict, List
 
 # Desteklenen modeller
 MODELS: Dict[str, str] = {
-    "qwen": "qwen:7b",
-    "deepseek": "deepseek-coder:6.7b",
-    "codellama": "codellama:7b",
-    "llama2": "llama2:7b",
+    "qwen": "qwen3:latest",
+    "deepseek": "deepseek-coder:33b",
+    "deepseek-v2": "deepseek-coder-v2:latest",
+    "codellama": "codellama:latest",
+    "llama2": "llama2:latest",
+    "llama3": "llama3.2:latest",
+    "qwen2.5": "qwen2.5-coder:latest",
+    "qwen2.5-32b": "qwen2.5-coder:32b",
+    "deepseek-r1": "deepseek-r1:latest",
     "mistral": "mistral:7b",
     "neural-chat": "neural-chat:7b",
     "phi": "phi:2.7b",
@@ -60,6 +65,8 @@ OLLAMA_CONFIG = {
     "tags_endpoint": "/api/tags",
     "timeout": 60
 }
+
+OUTPUT_DIR = "output"
 
 def get_model_name(alias: str) -> str:
     """Model alias'ını tam adına çevirir"""

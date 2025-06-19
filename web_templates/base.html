@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CortexCLI - AI Assistant{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Prism.js for syntax highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+    
+    <!-- Dynamic Theme CSS -->
+    <link id="theme-css" href="/api/themes/css" rel="stylesheet">
+    
+    <style>
+        /* Default styles (fallback) */
+        :root {
+            --primary-color: #6366f1;
+            --secondary-color: #8b5cf6;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+            --dark-color: #1f2937;
+            --light-color: #f9fafb;
+        }
+        
+        body {
+            background: linear-gradient(135deg, var(--dark-color) 0%, #374151 100%);
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .navbar {
+            background: rgba(31, 41, 55, 0.95) !important;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .card {
+            background: rgba(31, 41, 55, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border: none;
+            border-radius: 8px;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        }
+        
+        .chat-message {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            border-radius: 12px;
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        .chat-message.user {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            margin-left: 2rem;
+        }
+        
+        .chat-message.assistant {
+            background: rgba(31, 41, 55, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-right: 2rem;
+        }
+        
+        .code-editor {
+            background: #1e1e1e;
+            border-radius: 8px;
+            font-family: 'Fira Code', monospace;
+        }
+        
+        .sidebar {
+            background: rgba(31, 41, 55, 0.9);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            min-height: 100vh;
+        }
+        
+        .sidebar .nav-link {
+            color: #d1d5db;
+            border-radius: 8px;
+            margin: 0.25rem 0;
+            transition: all 0.3s ease;
+        }
+        
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Theme selector styles */
+        .theme-selector {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .theme-selector select {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            border-radius: 6px;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+        }
+        
+        .theme-selector select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-brain me-2"></i>
+                <strong>CortexCLI</strong>
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/chat">
+                            <i class="fas fa-comments me-1"></i>Chat
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/models">
+                            <i class="fas fa-robot me-1"></i>Models
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/files">
+                            <i class="fas fa-folder me-1"></i>Files
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/plugins">
+                            <i class="fas fa-puzzle-piece me-1"></i>Plugins
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/code">
+                            <i class="fas fa-code me-1"></i>Code
+                        </a>
+                    </li>
+                </ul>
+                
+                <div class="navbar-nav">
+                    <!-- Theme Selector -->
+                    <div class="theme-selector me-3">
+                        <select id="theme-selector" onchange="changeTheme(this.value)">
+                            <option value="">Loading themes...</option>
+                        </select>
+                    </div>
+                    
+                    <span class="navbar-text">
+                        <i class="fas fa-circle text-success me-1"></i>
+                        <span id="status">Connected</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-2 sidebar p-0">
+                <div class="p-3">
+                    <h6 class="text-muted mb-3">NAVIGATION</h6>
+                    <nav class="nav flex-column">
+                        <a class="nav-link" href="/">
+                            <i class="fas fa-home me-2"></i>Dashboard
+                        </a>
+                        <a class="nav-link" href="/chat">
+                            <i class="fas fa-comments me-2"></i>Chat
+                        </a>
+                        <a class="nav-link" href="/models">
+                            <i class="fas fa-robot me-2"></i>Models
+                        </a>
+                        <a class="nav-link" href="/files">
+                            <i class="fas fa-folder me-2"></i>Files
+                        </a>
+                        <a class="nav-link" href="/plugins">
+                            <i class="fas fa-puzzle-piece me-2"></i>Plugins
+                        </a>
+                        <a class="nav-link" href="/code">
+                            <i class="fas fa-code me-2"></i>Code Editor
+                        </a>
+                    </nav>
+                    
+                    <hr class="my-4">
+                    
+                    <h6 class="text-muted mb-3">QUICK ACTIONS</h6>
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-sm btn-outline-primary" onclick="quickAction('chat')">
+                            <i class="fas fa-plus me-1"></i>New Chat
+                        </button>
+                        <button class="btn btn-sm btn-outline-success" onclick="quickAction('code')">
+                            <i class="fas fa-play me-1"></i>Run Code
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning" onclick="quickAction('analyze')">
+                            <i class="fas fa-search me-1"></i>Analyze
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Main Content Area -->
+            <div class="col-md-10">
+                <div class="p-4">
+                    {% block content %}{% endblock %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.0/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    
+    <script>
+        // Global variables
+        let socket = null;
+        let currentModel = 'qwen2.5:7b';
+        
+        // Initialize Socket.IO
+        function initSocket() {
+            socket = io();
+            
+            socket.on('connect', function() {
+                document.getElementById('status').textContent = 'Connected';
+                document.getElementById('status').parentElement.querySelector('.fas').className = 'fas fa-circle text-success me-1';
+            });
+            
+            socket.on('disconnect', function() {
+                document.getElementById('status').textContent = 'Disconnected';
+                document.getElementById('status').parentElement.querySelector('.fas').className = 'fas fa-circle text-danger me-1';
+            });
+            
+            socket.on('status', function(data) {
+                console.log('Status:', data.message);
+            });
+        }
+        
+        // Quick actions
+        function quickAction(action) {
+            switch(action) {
+                case 'chat':
+                    window.location.href = '/chat';
+                    break;
+                case 'code':
+                    window.location.href = '/code';
+                    break;
+                case 'analyze':
+                    // Open code analysis modal
+                    break;
+            }
+        }
+        
+        // Utility functions
+        function formatTimestamp(timestamp) {
+            return new Date(timestamp).toLocaleString('tr-TR');
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initSocket();
+            loadThemes();
+            
+            // Set active nav link
+            const currentPath = window.location.pathname;
+            document.querySelectorAll('.nav-link').forEach(link => {
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active');
+                }
+            });
+        });
+        
+        // Theme management functions
+        function loadThemes() {
+            fetch('/api/themes')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const selector = document.getElementById('theme-selector');
+                        selector.innerHTML = '';
+                        
+                        data.themes.forEach(theme => {
+                            const option = document.createElement('option');
+                            option.value = theme.id;
+                            option.textContent = theme.name;
+                            if (theme.current) {
+                                option.selected = true;
+                            }
+                            selector.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading themes:', error);
+                });
+        }
+        
+        function changeTheme(themeId) {
+            if (!themeId) return;
+            
+            fetch('/api/themes/set', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ theme_name: themeId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Reload theme CSS
+                    const themeCss = document.getElementById('theme-css');
+                    themeCss.href = '/api/themes/css?' + new Date().getTime();
+                    
+                    // Show success message
+                    showNotification('Tema değiştirildi: ' + themeId, 'success');
+                } else {
+                    showNotification('Tema değiştirilemedi: ' + data.error, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error changing theme:', error);
+                showNotification('Tema değiştirme hatası', 'error');
+            });
+        }
+        
+        function showNotification(message, type = 'info') {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show position-fixed`;
+            notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            notification.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 3000);
+        }
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html> 

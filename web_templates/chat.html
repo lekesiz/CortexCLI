@@ -1,0 +1,516 @@
+{% extends "base.html" %}
+
+{% block title %}Chat - CortexCLI{% endblock %}
+
+{% block extra_css %}
+<style>
+.chat-container {
+    height: calc(100vh - 200px);
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+.chat-input-container {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 1rem;
+    background: rgba(31, 41, 55, 0.9);
+}
+
+.message-input {
+    background: rgba(31, 41, 55, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    border-radius: 8px;
+    padding: 0.75rem;
+    resize: none;
+}
+
+.message-input:focus {
+    background: rgba(31, 41, 55, 0.9);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.25);
+}
+
+.model-selector {
+    background: rgba(31, 41, 55, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    border-radius: 8px;
+}
+
+.typing-indicator {
+    display: none;
+    padding: 1rem;
+    color: #9ca3af;
+}
+
+.typing-indicator.show {
+    display: block;
+}
+
+.chat-controls {
+    background: rgba(31, 41, 55, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.message-actions {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.chat-message:hover .message-actions {
+    opacity: 1;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="fas fa-comments me-2"></i>AI Chat</h1>
+            <div class="btn-group">
+                <button class="btn btn-outline-secondary" onclick="clearChat()">
+                    <i class="fas fa-trash me-1"></i>Clear
+                </button>
+                <button class="btn btn-outline-primary" onclick="exportChat()">
+                    <i class="fas fa-download me-1"></i>Export
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chat Controls -->
+<div class="chat-controls">
+    <div class="row align-items-center">
+        <div class="col-md-4">
+            <label class="form-label">Model:</label>
+            <select id="modelSelector" class="form-select model-selector">
+                <option value="qwen2.5:7b">Qwen 2.5 7B</option>
+                <option value="deepseek-coder:6.7b">DeepSeek Coder 6.7B</option>
+                <option value="llama3.1:8b">Llama 3.1 8B</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">System Prompt:</label>
+            <input type="text" id="systemPrompt" class="form-control message-input" 
+                   value="Sen yardımcı bir AI asistanısın.">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Temperature:</label>
+            <input type="range" id="temperature" class="form-range" min="0" max="2" step="0.1" value="0.7">
+            <small class="text-muted" id="tempValue">0.7</small>
+        </div>
+    </div>
+</div>
+
+<!-- Chat Container -->
+<div class="card">
+    <div class="card-body p-0">
+        <div class="chat-container">
+            <!-- Messages Area -->
+            <div class="chat-messages" id="chatMessages">
+                <div class="text-center text-muted mt-5">
+                    <i class="fas fa-comments fa-3x mb-3"></i>
+                    <h5>Welcome to CortexCLI Chat!</h5>
+                    <p>Start a conversation with your AI assistant.</p>
+                </div>
+            </div>
+            
+            <!-- Typing Indicator -->
+            <div class="typing-indicator" id="typingIndicator">
+                <div class="d-flex align-items-center">
+                    <div class="loading me-2"></div>
+                    <span>AI is thinking...</span>
+                </div>
+            </div>
+            
+            <!-- Input Area -->
+            <div class="chat-input-container">
+                <div class="row">
+                    <div class="col-md-10">
+                        <textarea id="messageInput" class="form-control message-input" 
+                                  rows="3" placeholder="Type your message here... (Shift+Enter for new line, Enter to send)"></textarea>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary" onclick="sendMessage()">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="clearInput()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let chatHistory = [];
+let isTyping = false;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Join chat room
+    socket.emit('join_chat');
+    
+    // Load chat history
+    socket.on('chat_history', function(data) {
+        chatHistory = data.messages || [];
+        displayChatHistory();
+    });
+    
+    // Handle new messages
+    socket.on('new_message', function(data) {
+        if (data.type === 'user') {
+            addUserMessage(data.user, data.timestamp);
+        } else if (data.type === 'assistant') {
+            addAssistantMessage(data.assistant, data.timestamp, data.model);
+        }
+    });
+    
+    // Handle errors
+    socket.on('error', function(data) {
+        showError(data.message);
+    });
+    
+    // Setup input handlers
+    setupInputHandlers();
+    
+    // Load models
+    loadModels();
+});
+
+function setupInputHandlers() {
+    const messageInput = document.getElementById('messageInput');
+    const temperature = document.getElementById('temperature');
+    const tempValue = document.getElementById('tempValue');
+    
+    // Enter to send, Shift+Enter for new line
+    messageInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+    
+    // Auto-resize textarea
+    messageInput.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 150) + 'px';
+    });
+    
+    // Temperature slider
+    temperature.addEventListener('input', function() {
+        tempValue.textContent = this.value;
+    });
+}
+
+function loadModels() {
+    fetch('/api/models')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const selector = document.getElementById('modelSelector');
+                selector.innerHTML = '';
+                
+                data.models.forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model.name;
+                    option.textContent = model.name;
+                    if (model.name === data.current_model) {
+                        option.selected = true;
+                        currentModel = model.name;
+                    }
+                    selector.appendChild(option);
+                });
+            }
+        })
+        .catch(error => console.error('Error loading models:', error));
+}
+
+function sendMessage() {
+    const messageInput = document.getElementById('messageInput');
+    const message = messageInput.value.trim();
+    
+    if (!message || isTyping) return;
+    
+    const model = document.getElementById('modelSelector').value;
+    const systemPrompt = document.getElementById('systemPrompt').value;
+    const temperature = document.getElementById('temperature').value;
+    
+    // Send via Socket.IO
+    socket.emit('send_message', {
+        message: message,
+        model: model,
+        system_prompt: systemPrompt,
+        temperature: parseFloat(temperature)
+    });
+    
+    // Clear input
+    messageInput.value = '';
+    messageInput.style.height = 'auto';
+    
+    // Show typing indicator
+    showTypingIndicator();
+}
+
+function addUserMessage(message, timestamp) {
+    const chatMessages = document.getElementById('chatMessages');
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'chat-message user';
+    messageDiv.innerHTML = `
+        <div class="d-flex justify-content-between align-items-start">
+            <div class="flex-grow-1">
+                <div class="d-flex align-items-center mb-2">
+                    <i class="fas fa-user-circle me-2"></i>
+                    <strong>You</strong>
+                    <small class="text-muted ms-auto">${formatTimestamp(timestamp)}</small>
+                </div>
+                <p class="mb-0">${escapeHtml(message)}</p>
+            </div>
+        </div>
+    `;
+    
+    chatMessages.appendChild(messageDiv);
+    scrollToBottom();
+    hideTypingIndicator();
+}
+
+function addAssistantMessage(message, timestamp, model) {
+    const chatMessages = document.getElementById('chatMessages');
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'chat-message assistant';
+    messageDiv.innerHTML = `
+        <div class="d-flex justify-content-between align-items-start">
+            <div class="flex-grow-1">
+                <div class="d-flex align-items-center mb-2">
+                    <i class="fas fa-robot me-2"></i>
+                    <strong>AI Assistant</strong>
+                    <small class="text-muted ms-2">(${model})</small>
+                    <small class="text-muted ms-auto">${formatTimestamp(timestamp)}</small>
+                </div>
+                <div class="message-content">
+                    ${formatMessage(message)}
+                </div>
+                <div class="message-actions mt-2">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="copyMessage(this)">
+                        <i class="fas fa-copy me-1"></i>Copy
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary" onclick="saveCode(this)">
+                        <i class="fas fa-save me-1"></i>Save Code
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    chatMessages.appendChild(messageDiv);
+    scrollToBottom();
+    hideTypingIndicator();
+    
+    // Highlight code blocks
+    Prism.highlightAllUnder(messageDiv);
+}
+
+function formatMessage(message) {
+    // Convert markdown-like formatting
+    let formatted = escapeHtml(message);
+    
+    // Code blocks
+    formatted = formatted.replace(/```(\w+)?\n([\s\S]*?)```/g, function(match, lang, code) {
+        const language = lang || 'text';
+        return `<pre><code class="language-${language}">${escapeHtml(code)}</code></pre>`;
+    });
+    
+    // Inline code
+    formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>');
+    
+    // Bold
+    formatted = formatted.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    
+    // Italic
+    formatted = formatted.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    
+    // Line breaks
+    formatted = formatted.replace(/\n/g, '<br>');
+    
+    return formatted;
+}
+
+function showTypingIndicator() {
+    isTyping = true;
+    document.getElementById('typingIndicator').classList.add('show');
+    scrollToBottom();
+}
+
+function hideTypingIndicator() {
+    isTyping = false;
+    document.getElementById('typingIndicator').classList.remove('show');
+}
+
+function scrollToBottom() {
+    const chatMessages = document.getElementById('chatMessages');
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function clearInput() {
+    document.getElementById('messageInput').value = '';
+    document.getElementById('messageInput').style.height = 'auto';
+}
+
+function clearChat() {
+    if (confirm('Are you sure you want to clear the chat history?')) {
+        chatHistory = [];
+        document.getElementById('chatMessages').innerHTML = `
+            <div class="text-center text-muted mt-5">
+                <i class="fas fa-comments fa-3x mb-3"></i>
+                <h5>Chat cleared!</h5>
+                <p>Start a new conversation.</p>
+            </div>
+        `;
+    }
+}
+
+function exportChat() {
+    const chatData = {
+        timestamp: new Date().toISOString(),
+        messages: chatHistory
+    };
+    
+    const blob = new Blob([JSON.stringify(chatData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cortexcli-chat-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function copyMessage(button) {
+    const messageContent = button.closest('.chat-message').querySelector('.message-content');
+    const text = messageContent.textContent || messageContent.innerText;
+    
+    navigator.clipboard.writeText(text).then(() => {
+        const originalText = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
+        button.classList.remove('btn-outline-secondary');
+        button.classList.add('btn-success');
+        
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.classList.remove('btn-success');
+            button.classList.add('btn-outline-secondary');
+        }, 2000);
+    });
+}
+
+function saveCode(button) {
+    const messageContent = button.closest('.chat-message').querySelector('.message-content');
+    const codeBlocks = messageContent.querySelectorAll('pre code');
+    
+    if (codeBlocks.length === 0) {
+        alert('No code blocks found in this message.');
+        return;
+    }
+    
+    codeBlocks.forEach((block, index) => {
+        const code = block.textContent;
+        const language = block.className.replace('language-', '') || 'txt';
+        const extension = getExtensionForLanguage(language);
+        
+        const blob = new Blob([code], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `code-${index + 1}.${extension}`;
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+}
+
+function getExtensionForLanguage(language) {
+    const extensions = {
+        'python': 'py',
+        'javascript': 'js',
+        'html': 'html',
+        'css': 'css',
+        'json': 'json',
+        'bash': 'sh',
+        'shell': 'sh',
+        'sql': 'sql',
+        'java': 'java',
+        'cpp': 'cpp',
+        'c': 'c',
+        'go': 'go',
+        'rust': 'rs',
+        'php': 'php',
+        'ruby': 'rb'
+    };
+    return extensions[language] || 'txt';
+}
+
+function showError(message) {
+    const chatMessages = document.getElementById('chatMessages');
+    
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'alert alert-danger';
+    errorDiv.innerHTML = `
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        ${escapeHtml(message)}
+    `;
+    
+    chatMessages.appendChild(errorDiv);
+    scrollToBottom();
+    hideTypingIndicator();
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function displayChatHistory() {
+    const chatMessages = document.getElementById('chatMessages');
+    
+    if (chatHistory.length === 0) {
+        chatMessages.innerHTML = `
+            <div class="text-center text-muted mt-5">
+                <i class="fas fa-comments fa-3x mb-3"></i>
+                <h5>Welcome to CortexCLI Chat!</h5>
+                <p>Start a conversation with your AI assistant.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    chatMessages.innerHTML = '';
+    
+    chatHistory.forEach(entry => {
+        if (entry.user) {
+            addUserMessage(entry.user, entry.timestamp);
+        }
+        if (entry.assistant) {
+            addAssistantMessage(entry.assistant, entry.timestamp, entry.model);
+        }
+    });
+}
+</script>
+{% endblock %} 

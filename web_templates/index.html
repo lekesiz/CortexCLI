@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - CortexCLI{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="fas fa-tachometer-alt me-2"></i>Dashboard</h1>
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="window.location.href='/chat'">
+                    <i class="fas fa-comments me-1"></i>Start Chat
+                </button>
+                <button class="btn btn-success" onclick="window.location.href='/code'">
+                    <i class="fas fa-code me-1"></i>Code Editor
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title text-muted">Active Models</h6>
+                        <h3 class="mb-0" id="activeModels">0</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-robot fa-2x text-primary"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title text-muted">Chat Messages</h6>
+                        <h3 class="mb-0" id="chatMessages">0</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-comments fa-2x text-success"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title text-muted">Plugins</h6>
+                        <h3 class="mb-0" id="activePlugins">0</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-puzzle-piece fa-2x text-warning"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title text-muted">Code Executions</h6>
+                        <h3 class="mb-0" id="codeExecutions">0</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-code fa-2x text-info"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <div class="d-grid">
+                            <button class="btn btn-outline-primary btn-lg" onclick="window.location.href='/chat'">
+                                <i class="fas fa-comments fa-2x mb-2"></i><br>
+                                Start Chat
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="d-grid">
+                            <button class="btn btn-outline-success btn-lg" onclick="window.location.href='/code'">
+                                <i class="fas fa-code fa-2x mb-2"></i><br>
+                                Code Editor
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="d-grid">
+                            <button class="btn btn-outline-warning btn-lg" onclick="window.location.href='/models'">
+                                <i class="fas fa-robot fa-2x mb-2"></i><br>
+                                Manage Models
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="d-grid">
+                            <button class="btn btn-outline-info btn-lg" onclick="window.location.href='/files'">
+                                <i class="fas fa-folder fa-2x mb-2"></i><br>
+                                File Manager
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-history me-2"></i>Recent Chat</h5>
+            </div>
+            <div class="card-body">
+                <div id="recentChat" class="list-group list-group-flush">
+                    <div class="text-center text-muted">
+                        <i class="fas fa-comments fa-3x mb-3"></i>
+                        <p>No recent chat messages</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>System Status</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="me-3">
+                                <i class="fas fa-circle text-success"></i>
+                            </div>
+                            <div>
+                                <small class="text-muted">Ollama Service</small><br>
+                                <strong>Running</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="me-3">
+                                <i class="fas fa-circle text-success"></i>
+                            </div>
+                            <div>
+                                <small class="text-muted">Web Interface</small><br>
+                                <strong>Active</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="me-3">
+                                <i class="fas fa-circle text-success"></i>
+                            </div>
+                            <div>
+                                <small class="text-muted">Plugin System</small><br>
+                                <strong>Ready</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="me-3">
+                                <i class="fas fa-circle text-success"></i>
+                            </div>
+                            <div>
+                                <small class="text-muted">Code Execution</small><br>
+                                <strong>Available</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Load dashboard data
+    loadDashboardData();
+    
+    // Refresh data every 30 seconds
+    setInterval(loadDashboardData, 30000);
+});
+
+function loadDashboardData() {
+    // Load models
+    fetch('/api/models')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('activeModels').textContent = data.models.length;
+            }
+        })
+        .catch(error => console.error('Error loading models:', error));
+    
+    // Load plugins
+    fetch('/api/plugins')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const loadedPlugins = Object.values(data.plugins).filter(p => p.loaded).length;
+                document.getElementById('activePlugins').textContent = loadedPlugins;
+            }
+        })
+        .catch(error => console.error('Error loading plugins:', error));
+    
+    // Load recent chat (simulated)
+    loadRecentChat();
+}
+
+function loadRecentChat() {
+    // This would normally fetch from the API
+    const recentChat = document.getElementById('recentChat');
+    
+    // Simulate recent chat messages
+    const messages = [
+        { user: 'Hello, how can you help me?', timestamp: new Date(Date.now() - 300000) },
+        { user: 'Can you explain Python decorators?', timestamp: new Date(Date.now() - 600000) },
+        { user: 'Show me a simple web scraper', timestamp: new Date(Date.now() - 900000) }
+    ];
+    
+    if (messages.length > 0) {
+        recentChat.innerHTML = messages.map(msg => `
+            <div class="list-group-item border-0 bg-transparent">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <p class="mb-1">${msg.user}</p>
+                        <small class="text-muted">${formatTimestamp(msg.timestamp)}</small>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+}
+</script>
+{% endblock %} 

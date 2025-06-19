@@ -1,0 +1,214 @@
+{% extends 'base.html' %}
+{% block title %}Kullanıcı Ayarları - CortexCLI{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-4"><i class="fas fa-cog me-2"></i>Kullanıcı Ayarları</h2>
+    
+    <!-- Profil Bilgileri -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5><i class="fas fa-user me-2"></i>Profil Bilgileri</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <label class="form-label">Kullanıcı Adı</label>
+                    <input type="text" id="username" class="form-control mb-3">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">E-posta</label>
+                    <input type="email" id="email" class="form-control mb-3">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <label class="form-label">Favori Model</label>
+                    <input type="text" id="favorite_model" class="form-control mb-3">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Tercih Edilen Tema</label>
+                    <select id="preferred_theme" class="form-control mb-3">
+                        <option value="default">Default</option>
+                        <option value="dark">Dark</option>
+                        <option value="ocean">Ocean</option>
+                        <option value="sunset">Sunset</option>
+                        <option value="matrix">Matrix</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tercihler -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5><i class="fas fa-sliders-h me-2"></i>Tercihler</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <label class="form-label">Varsayılan Model</label>
+                    <input type="text" id="default_model" class="form-control mb-3">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Varsayılan Sıcaklık</label>
+                    <input type="number" id="default_temperature" class="form-control mb-3" step="0.1" min="0" max="2">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-12">
+                    <label class="form-label">Varsayılan Sistem Promptu</label>
+                    <textarea id="default_system_prompt" class="form-control mb-3" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-check mb-3">
+                        <input type="checkbox" id="auto_save_code" class="form-check-input">
+                        <label class="form-check-label">Kod Otomatik Kaydet</label>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input type="checkbox" id="auto_save_history" class="form-check-input">
+                        <label class="form-check-label">Geçmiş Otomatik Kaydet</label>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-check mb-3">
+                        <input type="checkbox" id="multi_line_input" class="form-check-input">
+                        <label class="form-check-label">Çok Satırlı Giriş</label>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input type="checkbox" id="enable_notifications" class="form-check-input">
+                        <label class="form-check-label">Bildirimleri Etkinleştir</label>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                    <label class="form-label">Çıktı Dizini</label>
+                    <input type="text" id="output_directory" class="form-control mb-3">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Maksimum Geçmiş Boyutu</label>
+                    <input type="number" id="max_history_size" class="form-control mb-3" min="10" max="1000">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- İstatistikler -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5><i class="fas fa-chart-bar me-2"></i>Kullanım İstatistikleri</h5>
+        </div>
+        <div class="card-body">
+            <div class="row" id="stats-container">
+                <!-- İstatistikler buraya gelecek -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Kaydet Butonu -->
+    <div class="text-center">
+        <button class="btn btn-primary btn-lg" onclick="saveSettings()">
+            <i class="fas fa-save me-2"></i>Ayarları Kaydet
+        </button>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+let settingsData = {};
+
+function loadSettings() {
+    fetch('/api/settings')
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                settingsData = data;
+                populateForm(data);
+            }
+        });
+}
+
+function populateForm(data) {
+    // Profil bilgileri
+    document.getElementById('username').value = data.profile.username || '';
+    document.getElementById('email').value = data.profile.email || '';
+    document.getElementById('favorite_model').value = data.profile.favorite_model || '';
+    document.getElementById('preferred_theme').value = data.profile.preferred_theme || 'default';
+    
+    // Tercihler
+    document.getElementById('default_model').value = data.preferences.default_model || '';
+    document.getElementById('default_temperature').value = data.preferences.default_temperature || 0.7;
+    document.getElementById('default_system_prompt').value = data.preferences.default_system_prompt || '';
+    document.getElementById('auto_save_code').checked = data.preferences.auto_save_code || false;
+    document.getElementById('auto_save_history').checked = data.preferences.auto_save_history || false;
+    document.getElementById('multi_line_input').checked = data.preferences.multi_line_input || false;
+    document.getElementById('enable_notifications').checked = data.preferences.enable_notifications || false;
+    document.getElementById('output_directory').value = data.preferences.output_directory || 'output';
+    document.getElementById('max_history_size').value = data.preferences.max_history_size || 100;
+    
+    // İstatistikler
+    renderStats(data.stats);
+}
+
+function renderStats(stats) {
+    const container = document.getElementById('stats-container');
+    container.innerHTML = '';
+    
+    Object.entries(stats).forEach(([key, value]) => {
+        const col = document.createElement('div');
+        col.className = 'col-md-4 mb-3';
+        col.innerHTML = `
+            <div class="card text-center">
+                <div class="card-body">
+                    <h6 class="card-title">${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</h6>
+                    <p class="card-text h4">${value}</p>
+                </div>
+            </div>
+        `;
+        container.appendChild(col);
+    });
+}
+
+function saveSettings() {
+    const data = {
+        profile: {
+            username: document.getElementById('username').value,
+            email: document.getElementById('email').value,
+            favorite_model: document.getElementById('favorite_model').value,
+            preferred_theme: document.getElementById('preferred_theme').value
+        },
+        preferences: {
+            default_model: document.getElementById('default_model').value,
+            default_temperature: parseFloat(document.getElementById('default_temperature').value),
+            default_system_prompt: document.getElementById('default_system_prompt').value,
+            auto_save_code: document.getElementById('auto_save_code').checked,
+            auto_save_history: document.getElementById('auto_save_history').checked,
+            multi_line_input: document.getElementById('multi_line_input').checked,
+            enable_notifications: document.getElementById('enable_notifications').checked,
+            output_directory: document.getElementById('output_directory').value,
+            max_history_size: parseInt(document.getElementById('max_history_size').value)
+        }
+    };
+    
+    fetch('/api/settings/update', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Ayarlar başarıyla kaydedildi!', 'success');
+        } else {
+            showNotification('Ayarlar kaydedilemedi: ' + data.error, 'error');
+        }
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadSettings();
+});
+ 

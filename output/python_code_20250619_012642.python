@@ -1,0 +1,17 @@
+import unittest
+
+class Topla:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+    def topla(self):
+        return self.x + self.y
+
+class TestToplaKlasoru(unittest.TestCase):
+    def test_toplama(self):
+        top = Topla(5, -3)
+        self.assertEqual(top.topla(), 2)
+
+if __name__ == "__main__":
+    unittest.main()

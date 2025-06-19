@@ -1,0 +1,26 @@
+[
+  {
+    "id": "1",
+    "title": "CortexCLI Kullanım Notları",
+    "content": "CortexCLI, Ollama modellerini kullanarak güçlü bir AI asistan CLI aracıdır. Qwen, DeepSeek ve diğer popüler modelleri destekler.",
+    "tags": ["cli", "ai", "ollama"],
+    "created_date": "2025-06-19T00:00:00",
+    "updated_date": "2025-06-19T00:00:00"
+  },
+  {
+    "id": "2", 
+    "title": "Plugin Sistemi",
+    "content": "Plugin sistemi ile web arama, dosya analizi, hava durumu gibi özellikler eklenebilir. Plugin'ler dinamik olarak yüklenip kaldırılabilir.",
+    "tags": ["plugin", "system", "extensions"],
+    "created_date": "2025-06-19T00:00:00",
+    "updated_date": "2025-06-19T00:00:00"
+  },
+  {
+    "id": "3",
+    "title": "Web Arayüzü",
+    "content": "Flask tabanlı web arayüzü ile gerçek zamanlı sohbet, kod editörü, dosya yönetimi ve plugin yönetimi yapılabilir.",
+    "tags": ["web", "flask", "interface"],
+    "created_date": "2025-06-19T00:00:00", 
+    "updated_date": "2025-06-19T00:00:00"
+  }
+]

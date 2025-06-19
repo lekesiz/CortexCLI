@@ -128,12 +128,25 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# DQai specific files
+# CortexCLI specific files
 chat_history.txt
 *.history
 *.log
 temp/
 tmp/
+output/*.png
+output/*.jpg
+output/*.jpeg
+output/*.gif
+output/*.svg
+output/*.pdf
+output/*.py
+output/*.sh
+output/*.txt
+output/*.json
+output/*.csv
+output/*.xlsx
+output/*.xls
 
 # IDE files
 .vscode/
@@ -149,4 +162,23 @@ tmp/
 .Spotlight-V100
 .Trashes
 ehthumbs.db
-Thumbs.db 
+Thumbs.db
+
+# Docker
+.dockerignore
+
+# Node.js (if any frontend components)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Backup files
+*.bak
+*.backup
+*.old
+*.orig
+
+# Temporary files
+*.tmp
+*.temp 

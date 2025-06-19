@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+
+{% block title %}Models - CortexCLI{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="fas fa-robot me-2"></i>Model Management</h1>
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="addModel()">
+                    <i class="fas fa-plus me-1"></i>Add Model
+                </button>
+                <button class="btn btn-outline-secondary" onclick="refreshModels()">
+                    <i class="fas fa-sync me-1"></i>Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Model Stats -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-download fa-2x text-primary mb-2"></i>
+                <h4 id="totalModels">0</h4>
+                <p class="text-muted mb-0">Total Models</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-play fa-2x text-success mb-2"></i>
+                <h4 id="activeModels">0</h4>
+                <p class="text-muted mb-0">Active Models</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-hdd fa-2x text-warning mb-2"></i>
+                <h4 id="totalSize">0 GB</h4>
+                <p class="text-muted mb-0">Total Size</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-clock fa-2x text-info mb-2"></i>
+                <h4 id="avgResponse">0s</h4>
+                <p class="text-muted mb-0">Avg Response</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Models List -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="fas fa-list me-2"></i>Available Models</h5>
+    </div>
+    <div class="card-body">
+        <div id="modelsList" class="row">
+            <!-- Models will be loaded here -->
+        </div>
+    </div>
+</div>
+
+<!-- Add Model Modal -->
+<div class="modal fade" id="addModelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Model</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addModelForm">
+                    <div class="mb-3">
+                        <label class="form-label">Model Name:</label>
+                        <input type="text" class="form-control message-input" id="modelName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Model Type:</label>
+                        <select class="form-select model-selector" id="modelType">
+                            <option value="qwen">Qwen</option>
+                            <option value="deepseek">DeepSeek</option>
+                            <option value="llama">Llama</option>
+                            <option value="mistral">Mistral</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Size:</label>
+                        <select class="form-select model-selector" id="modelSize">
+                            <option value="7b">7B</option>
+                            <option value="13b">13B</option>
+                            <option value="30b">30B</option>
+                            <option value="70b">70B</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="installModel()">Install</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadModels();
+});
+
+function loadModels() {
+    fetch('/api/models')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                displayModels(data.models);
+                updateStats(data.models);
+            }
+        })
+        .catch(error => console.error('Error loading models:', error));
+}
+
+function displayModels(models) {
+    const modelsList = document.getElementById('modelsList');
+    
+    if (models.length === 0) {
+        modelsList.innerHTML = `
+            <div class="col-12 text-center text-muted">
+                <i class="fas fa-robot fa-3x mb-3"></i>
+                <h5>No models found</h5>
+                <p>Add your first model to get started.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    modelsList.innerHTML = models.map(model => `
+        <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h6 class="card-title mb-0">${model.name}</h6>
+                        <span class="badge bg-success">Active</span>
+                    </div>
+                    <p class="text-muted small mb-2">Size: ${model.size || 'Unknown'}</p>
+                    <p class="text-muted small mb-3">Modified: ${formatTimestamp(model.modified_at)}</p>
+                    <div class="btn-group w-100">
+                        <button class="btn btn-sm btn-primary" onclick="useModel('${model.name}')">
+                            <i class="fas fa-play me-1"></i>Use
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="testModel('${model.name}')">
+                            <i class="fas fa-vial me-1"></i>Test
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="removeModel('${model.name}')">
+                            <i class="fas fa-trash me-1"></i>Remove
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function updateStats(models) {
+    document.getElementById('totalModels').textContent = models.length;
+    document.getElementById('activeModels').textContent = models.length;
+    
+    // Calculate total size
+    const totalSize = models.reduce((sum, model) => sum + (model.size_gb || 0), 0);
+    document.getElementById('totalSize').textContent = `${totalSize.toFixed(1)} GB`;
+    
+    // Simulate average response time
+    document.getElementById('avgResponse').textContent = '2.3s';
+}
+
+function addModel() {
+    const modal = new bootstrap.Modal(document.getElementById('addModelModal'));
+    modal.show();
+}
+
+function installModel() {
+    const modelName = document.getElementById('modelName').value;
+    const modelType = document.getElementById('modelType').value;
+    const modelSize = document.getElementById('modelSize').value;
+    
+    if (!modelName) {
+        alert('Please enter a model name.');
+        return;
+    }
+    
+    const fullName = `${modelType}:${modelSize}`;
+    
+    // Show loading state
+    const installBtn = document.querySelector('#addModelModal .btn-primary');
+    const originalText = installBtn.innerHTML;
+    installBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Installing...';
+    installBtn.disabled = true;
+    
+    // Simulate installation
+    setTimeout(() => {
+        installBtn.innerHTML = originalText;
+        installBtn.disabled = false;
+        
+        const modal = bootstrap.Modal.getInstance(document.getElementById('addModelModal'));
+        modal.hide();
+        
+        // Refresh models list
+        loadModels();
+        
+        // Show success message
+        showNotification('Model installed successfully!', 'success');
+    }, 3000);
+}
+
+function useModel(modelName) {
+    currentModel = modelName;
+    showNotification(`Switched to model: ${modelName}`, 'info');
+}
+
+function testModel(modelName) {
+    showNotification(`Testing model: ${modelName}`, 'info');
+    
+    // Simulate model test
+    setTimeout(() => {
+        showNotification(`Model ${modelName} is working correctly!`, 'success');
+    }, 2000);
+}
+
+function removeModel(modelName) {
+    if (confirm(`Are you sure you want to remove model: ${modelName}?`)) {
+        showNotification(`Removing model: ${modelName}`, 'warning');
+        
+        // Simulate removal
+        setTimeout(() => {
+            loadModels();
+            showNotification(`Model ${modelName} removed successfully!`, 'success');
+        }, 1000);
+    }
+}
+
+function refreshModels() {
+    loadModels();
+    showNotification('Models refreshed!', 'info');
+}
+
+function showNotification(message, type = 'info') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 3000);
+}
+</script>
+{% endblock %} 

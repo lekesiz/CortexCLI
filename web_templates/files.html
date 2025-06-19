@@ -1,0 +1,498 @@
+{% extends "base.html" %}
+
+{% block title %}Dosya Yönetimi - CortexCLI{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sol Panel - Dosya Listesi -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-folder-open me-2"></i>Dosya Yöneticisi</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Arama ve Filtreleme -->
+                    <div class="mb-3">
+                        <div class="input-group">
+                            <input type="text" id="search-input" class="form-control" placeholder="Dosya ara...">
+                            <button class="btn btn-outline-secondary" onclick="searchFiles()">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Filtreler -->
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <select id="file-type-filter" class="form-select" onchange="listFiles()">
+                                <option value="all">Tümü</option>
+                                <option value="file">Dosyalar</option>
+                                <option value="dir">Dizinler</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <select id="pattern-filter" class="form-select" onchange="listFiles()">
+                                <option value="*">Tüm Dosyalar</option>
+                                <option value="*.py">Python</option>
+                                <option value="*.js">JavaScript</option>
+                                <option value="*.html">HTML</option>
+                                <option value="*.css">CSS</option>
+                                <option value="*.json">JSON</option>
+                                <option value="*.txt">Text</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Dizin Navigasyonu -->
+                    <div class="mb-3">
+                        <div class="input-group">
+                            <input type="text" id="current-path" class="form-control" value=".">
+                            <button class="btn btn-outline-primary" onclick="changeDirectory()">
+                                <i class="fas fa-folder"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Dosya Listesi -->
+                    <div id="file-list" class="list-group" style="max-height: 400px; overflow-y: auto;">
+                        <!-- Dosyalar burada listelenecek -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Orta Panel - Dosya Önizleme -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-eye me-2"></i>Dosya Önizleme</h5>
+                </div>
+                <div class="card-body">
+                    <div id="file-preview" class="border rounded p-3" style="min-height: 400px; max-height: 600px; overflow-y: auto;">
+                        <div class="text-muted text-center">
+                            <i class="fas fa-file-alt fa-3x mb-3"></i>
+                            <p>Dosya seçin veya önizleme için tıklayın</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sağ Panel - Dosya İşlemleri -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-tools me-2"></i>Dosya İşlemleri</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Seçili Dosya Bilgisi -->
+                    <div id="file-info" class="mb-3">
+                        <div class="text-muted text-center">
+                            <i class="fas fa-info-circle fa-2x mb-2"></i>
+                            <p>Dosya seçin</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Hızlı İşlemler -->
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-primary" onclick="showFileInfo()">
+                            <i class="fas fa-info-circle me-2"></i>Bilgi Göster
+                        </button>
+                        <button class="btn btn-outline-success" onclick="showTreeView()">
+                            <i class="fas fa-sitemap me-2"></i>Ağaç Görünümü
+                        </button>
+                        <button class="btn btn-outline-warning" onclick="showSearchResults()">
+                            <i class="fas fa-search me-2"></i>İçerik Ara
+                        </button>
+                    </div>
+                    
+                    <hr>
+                    
+                    <!-- Dosya İşlemleri -->
+                    <h6>Dosya İşlemleri</h6>
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-secondary" onclick="createDirectory()">
+                            <i class="fas fa-folder-plus me-2"></i>Dizin Oluştur
+                        </button>
+                        <button class="btn btn-outline-info" onclick="copyFile()">
+                            <i class="fas fa-copy me-2"></i>Kopyala
+                        </button>
+                        <button class="btn btn-outline-warning" onclick="moveFile()">
+                            <i class="fas fa-cut me-2"></i>Taşı
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="deleteFile()">
+                            <i class="fas fa-trash me-2"></i>Sil
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal'lar -->
+<div class="modal fade" id="fileInfoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Dosya Bilgileri</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="fileInfoContent">
+                <!-- Dosya bilgileri burada gösterilecek -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="treeViewModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Dizin Ağacı</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <input type="text" id="tree-directory" class="form-control" placeholder="Dizin yolu" value=".">
+                </div>
+                <div id="treeViewContent" style="font-family: monospace; white-space: pre-wrap;">
+                    <!-- Ağaç görünümü burada gösterilecek -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="loadTreeView()">Yükle</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="searchModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">İçerik Arama</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <input type="text" id="content-search" class="form-control" placeholder="Aranacak kelime...">
+                </div>
+                <div id="searchResults">
+                    <!-- Arama sonuçları burada gösterilecek -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="searchContent()">Ara</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentDirectory = '.';
+let selectedFile = null;
+
+// Sayfa yüklendiğinde dosyaları listele
+document.addEventListener('DOMContentLoaded', function() {
+    listFiles();
+});
+
+function listFiles() {
+    const directory = document.getElementById('current-path').value;
+    const fileType = document.getElementById('file-type-filter').value;
+    const pattern = document.getElementById('pattern-filter').value;
+    
+    fetch('/api/file-list', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            directory: directory,
+            type: fileType,
+            pattern: pattern
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            displayFileList(data.result);
+        } else {
+            showError('Dosya listesi yüklenemedi: ' + data.error);
+        }
+    });
+}
+
+function displayFileList(result) {
+    const fileList = document.getElementById('file-list');
+    
+    // Rich text'i parse et ve HTML'e çevir
+    const lines = result.split('\n');
+    let html = '';
+    
+    for (let line of lines) {
+        if (line.includes('📁') || line.includes('📄')) {
+            const isDir = line.includes('📁');
+            const icon = isDir ? '📁' : '📄';
+            const name = line.split(' ')[1];
+            const info = line.split(' - ').slice(1).join(' - ');
+            
+            html += `
+                <div class="list-group-item list-group-item-action" 
+                     onclick="selectFile('${name}', ${isDir})" 
+                     style="cursor: pointer;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>${icon} ${name}</span>
+                        <small class="text-muted">${info}</small>
+                    </div>
+                </div>
+            `;
+        }
+    }
+    
+    fileList.innerHTML = html;
+}
+
+function selectFile(name, isDir) {
+    selectedFile = name;
+    
+    if (isDir) {
+        // Dizin seçildi, içine gir
+        const currentPath = document.getElementById('current-path').value;
+        const newPath = currentPath === '.' ? name : currentPath + '/' + name;
+        document.getElementById('current-path').value = newPath;
+        listFiles();
+    } else {
+        // Dosya seçildi, önizleme göster
+        previewFile(name);
+        showFileInfo(name);
+    }
+}
+
+function previewFile(filename) {
+    const currentPath = document.getElementById('current-path').value;
+    const filePath = currentPath === '.' ? filename : currentPath + '/' + filename;
+    
+    fetch('/api/file-preview', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({file_path: filePath})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            displayFilePreview(data.result);
+        } else {
+            showError('Dosya önizleme hatası: ' + data.error);
+        }
+    });
+}
+
+function displayFilePreview(result) {
+    const preview = document.getElementById('file-preview');
+    
+    // Rich text'i parse et
+    const lines = result.split('\n');
+    let html = '';
+    
+    for (let line of lines) {
+        if (line.includes('[bold]')) {
+            line = line.replace('[bold]', '<strong>').replace('[/bold]', '</strong>');
+        }
+        if (line.includes('[green]')) {
+            line = line.replace('[green]', '<span class="text-success">').replace('[/green]', '</span>');
+        }
+        if (line.includes('[red]')) {
+            line = line.replace('[red]', '<span class="text-danger">').replace('[/red]', '</span>');
+        }
+        if (line.includes('[yellow]')) {
+            line = line.replace('[yellow]', '<span class="text-warning">').replace('[/yellow]', '</span>');
+        }
+        
+        html += line + '<br>';
+    }
+    
+    preview.innerHTML = html;
+}
+
+function showFileInfo(filename = null) {
+    const filePath = filename || selectedFile;
+    if (!filePath) return;
+    
+    const currentPath = document.getElementById('current-path').value;
+    const fullPath = currentPath === '.' ? filePath : currentPath + '/' + filePath;
+    
+    fetch('/api/file-info', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({file_path: fullPath})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('fileInfoContent').innerHTML = data.result.replace(/\n/g, '<br>');
+            new bootstrap.Modal(document.getElementById('fileInfoModal')).show();
+        } else {
+            showError('Dosya bilgisi hatası: ' + data.error);
+        }
+    });
+}
+
+function showTreeView() {
+    new bootstrap.Modal(document.getElementById('treeViewModal')).show();
+    loadTreeView();
+}
+
+function loadTreeView() {
+    const directory = document.getElementById('tree-directory').value;
+    
+    fetch('/api/file-tree', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            directory: directory,
+            max_depth: 3
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('treeViewContent').textContent = data.result;
+        } else {
+            showError('Ağaç görünümü hatası: ' + data.error);
+        }
+    });
+}
+
+function searchFiles() {
+    const keyword = document.getElementById('search-input').value;
+    if (!keyword) {
+        listFiles();
+        return;
+    }
+    
+    const currentPath = document.getElementById('current-path').value;
+    
+    fetch('/api/file-search', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            keyword: keyword,
+            directory: currentPath
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            displaySearchResults(data.result);
+        } else {
+            showError('Arama hatası: ' + data.error);
+        }
+    });
+}
+
+function displaySearchResults(result) {
+    const fileList = document.getElementById('file-list');
+    
+    // Rich text'i parse et
+    const lines = result.split('\n');
+    let html = '';
+    
+    for (let line of lines) {
+        if (line.includes('📄')) {
+            const name = line.split('📄 ')[1];
+            html += `
+                <div class="list-group-item">
+                    <i class="fas fa-file me-2"></i>${name}
+                </div>
+            `;
+        }
+    }
+    
+    fileList.innerHTML = html;
+}
+
+function showSearchResults() {
+    new bootstrap.Modal(document.getElementById('searchModal')).show();
+}
+
+function searchContent() {
+    const keyword = document.getElementById('content-search').value;
+    if (!keyword) return;
+    
+    const currentPath = document.getElementById('current-path').value;
+    
+    fetch('/api/file-search', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            keyword: keyword,
+            directory: currentPath
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('searchResults').innerHTML = data.result.replace(/\n/g, '<br>');
+        } else {
+            showError('İçerik arama hatası: ' + data.error);
+        }
+    });
+}
+
+function changeDirectory() {
+    listFiles();
+}
+
+function createDirectory() {
+    const name = prompt('Dizin adı:');
+    if (!name) return;
+    
+    // Bu fonksiyon CLI komutunu çağıracak
+    console.log('Dizin oluşturma:', name);
+}
+
+function copyFile() {
+    if (!selectedFile) {
+        alert('Önce bir dosya seçin');
+        return;
+    }
+    
+    const newName = prompt('Yeni dosya adı:');
+    if (!newName) return;
+    
+    console.log('Dosya kopyalama:', selectedFile, '→', newName);
+}
+
+function moveFile() {
+    if (!selectedFile) {
+        alert('Önce bir dosya seçin');
+        return;
+    }
+    
+    const newName = prompt('Yeni dosya adı:');
+    if (!newName) return;
+    
+    console.log('Dosya taşıma:', selectedFile, '→', newName);
+}
+
+function deleteFile() {
+    if (!selectedFile) {
+        alert('Önce bir dosya seçin');
+        return;
+    }
+    
+    if (!confirm(`"${selectedFile}" dosyasını silmek istediğinizden emin misiniz?`)) {
+        return;
+    }
+    
+    console.log('Dosya silme:', selectedFile);
+}
+
+function showError(message) {
+    alert('Hata: ' + message);
+}
+</script>
+{% endblock %} 
